@@ -13,7 +13,7 @@
 
 void head() {
      // returns the header of the page ( doesn't have to be a in it's own function can be) 
-{
+}
 
 void get() {
     // generates a HTML5 page in memmory ( think it should be in a seperate function)
@@ -33,6 +33,9 @@ int main(int argc, char *argv[]) {
 	int sockfd;
 	struct sockaddr_in server, client;
 
+	for(int i = 0; i < sizeOf(argv); i++) {
+		printf("%d", argv[i]);
+	}
         // close connections if no activity in 30 sec
         // client can send a "connection: closed" msg
         //
