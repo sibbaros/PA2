@@ -44,6 +44,9 @@ int main(int argc, char *argv[]) {
         socklen_t len = (socklen_t) sizeof(client);
         int connfd = accept(sockfd, (struct sockaddr *) &client, &len);
         
+        if(connfd == -1) {
+            perror("Connection failed...\n");
+        }
         //Recieve from connfd, not sockfd
         ssize_t n = recv(connfd, message, sizeof(message) - 1, 0);
     }
