@@ -9,6 +9,9 @@ LDLIBS =
 .PHONY: all
 all: httpd
 
+server:
+	$(CC) $(CFLAGS) httpd.c -o httpd
+
 clean:
 	rm -f *.o
 
