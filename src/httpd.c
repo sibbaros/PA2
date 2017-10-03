@@ -31,19 +31,22 @@
 int main(int argc, char *argv[]) {
     int sockfd;
     struct sockaddr_in server, client;
-    socklen_t sInLen = sizeof(client);
+    char message[512];
     
     memset(&server, 0, sizeof(server));
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     server.sin_port = htons(argv[1]);
     bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));
-         
-    for(int i = 0; i < sInLen; i++) {
-        printf("%s \n", argv[i]);
+
+    for(;;) {
+        //We first have to accept a connection
+        socklen_t len = (socklen_t) sizeof(client);
+        int connfd = accept(sockfd, (struct sockaddr *) &client, &len);
+        
+        //Recieve from connfd, not sockfd
+        ssize_t n = recv(connfd, message, sizeof(message) - 1, 0);
     }
-    // close connections if no activity in 30 sec
-    // client can send a "connection: closed" msg
-    //
+    
     return 0;
 }
