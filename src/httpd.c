@@ -29,7 +29,7 @@
    // sends an error msg
 //}
 int main(int argc, char *argv[]) {
-    int sockfd;
+    int sockfd, port;
     struct sockaddr_in server, client;
     char message[512];
     
@@ -38,7 +38,9 @@ int main(int argc, char *argv[]) {
     memset(&server, 0, sizeof(server));
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
-    server.sin_port = htons(argv[1]);
+    printf("%s \n",argv[1]);
+    //port = atoi(argv[1]);;
+    server.sin_port = htons(port);
     bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));
 
     for(;;) {
@@ -46,7 +48,7 @@ int main(int argc, char *argv[]) {
         socklen_t len = (socklen_t) sizeof(client);
         int connfd = accept(sockfd, (struct sockaddr *) &client, &len);
         
-        if(connfd == -1) {
+        if(connfd == 0) {
             perror("Connection failed...\n");
         }
         //Recieve from connfd, not sockfd
