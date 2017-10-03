@@ -32,9 +32,10 @@
 int main(int argc, char *argv[]) {
 	int sockfd;
 	struct sockaddr_in server, client;
-
-	for(int i = 0; i < 10; i++) {
-		printf("%d \n", argv[i]);
+	socklen_t sInLen = sizeof(client);
+	
+	for(int i = 0; i < sInLen; i++) {
+		printf("%s \n", argv[i]);
 	}
         // close connections if no activity in 30 sec
         // client can send a "connection: closed" msg
