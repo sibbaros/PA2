@@ -25,20 +25,25 @@
    // same as get request plus the data in the body of the post request
 //}
 
-//void error() {
+//void error() {    
    // sends an error msg
 //}
-
 int main(int argc, char *argv[]) {
-	int sockfd;
-	struct sockaddr_in server, client;
-	socklen_t sInLen = sizeof(client);
-	
-	for(int i = 0; i < sInLen; i++) {
-		printf("%s \n", argv[i]);
-	}
-        // close connections if no activity in 30 sec
-        // client can send a "connection: closed" msg
-        //
-	return 0;
+    int sockfd;
+    struct sockaddr_in server, client;
+    socklen_t sInLen = sizeof(client);
+    
+    memset(&server, 0, sizeof(server));
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = htonl(INADDR_ANY);
+    server.sin_port = htons(argv[1]);
+    bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));
+         
+    for(int i = 0; i < sInLen; i++) {
+        printf("%s \n", argv[i]);
+    }
+    // close connections if no activity in 30 sec
+    // client can send a "connection: closed" msg
+    //
+    return 0;
 }
