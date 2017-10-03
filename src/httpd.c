@@ -33,6 +33,8 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in server, client;
     char message[512];
     
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
     memset(&server, 0, sizeof(server));
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
