@@ -25,9 +25,16 @@ void post() {
    // same as get request plus the data in the body of the post request
 }
 
+void error() {
+   // sends an error msg
+}
+
 int main(int argc, char *argv[]) {
 	int sockfd;
 	struct sockaddr_in server, client;
-	
+
+        // close connections if no activity in 30 sec
+        // client can send a "connection: closed" msg
+        //
 	return 0;
 }
