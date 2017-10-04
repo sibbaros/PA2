@@ -39,21 +39,26 @@ int main(int argc, char *argv[]) {
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     printf("%s \n",argv[1]);
-    //port = atoi(argv[1]);;
+    port = atoi(argv[1]);
     server.sin_port = htons(port);
     bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));
-
+    socklen_t len = (socklen_t) sizeof(client);    
+    listen(sockfd, 100);
     for(;;) {
         //We first have to accept a connection
         socklen_t len = (socklen_t) sizeof(client);
         int connfd = accept(sockfd, (struct sockaddr *) &client, &len);
-        
+        //printf("connfd: %d", connfd);
         if(connfd == 0) {
             perror("Connection failed...\n");
         }
         //Recieve from connfd, not sockfd
-        ssize_t n = recv(connfd, message, sizeof(message) - 1, 0);
+        ssize_t n = recv(connfd, &message, sizeof(message) - 1, 0);
+	printf("%d", n);
+        printf("%s", message);
     }
     
     return 0;
+
 }
+
