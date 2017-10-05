@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
             head();
         }
         else {
-            printf("none of the above, error\n");
+            printf("ERROR: The requestERROR: The requested type is not supported.\n");
             error();
         }
 
