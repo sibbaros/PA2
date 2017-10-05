@@ -67,22 +67,23 @@ int main(int argc, char *argv[]) {
         // need to check the first message and see if it is get, post or head
         // and then send it to the right function and send it the webpage it's asking for 
         //
-	printf("%d\n", n2);
-        printf("the message is: %s", message);
+	//printf("%d\n", n2);
+        //printf("the message is: %s", message);
         
-        char mtype[4];
-        memcpy(mtype, &message[0], 3);
-        mtype[3] = '\0';
+        char mtype[5];
+        //mtype = strchr(message, ' ');
+        memcpy(mtype, &message[0], 4);
+        mtype[4] = '\0';
         
-        if(!(strcmp(mtype, "GET"))) {
+        if(!(strcmp(mtype, "GET "))) {
             printf("Get request\n");
             get();
         }
-        else if( message[0] == 'P') {
+        else if(!(strcmp(mtype, "POST"))) {
             printf("Post request\n");
             post();
         }
-        else if( message[0] == 'H') {
+        else if(!(strcmp(mtype, "HEAD"))) {
             printf("Head request\n");
             head();
         }
@@ -91,9 +92,6 @@ int main(int argc, char *argv[]) {
             error();
         }
 
-
-
-        //write(sockfd, html, sizeof(html));
     }
     
     return 0;
