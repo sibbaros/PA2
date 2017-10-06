@@ -20,7 +20,16 @@ void get(char *html, char *ipAddr, char *hostPort, char *hostIP) {
     // generates a HTML5 page in memmory ( think it should be in a seperate function)
     // Itsactual content should include the URL of the requested page and the IP address and port number of the requesting client
     // format http://foo.com/page 123.123.123.123:4567
-    html = "HTTP/1.1 200, OK\n<!DOCTYPE><html><body><h1>FKOFM8</h1></body></html>\n";
+    html[0] = "\0";
+    strcat(html, "HTTP/1.1 200, OK\nContent-type: text/html\n"
+    "\n<!DOCTYPE>\n<html>\n    <body>\n        <h1>\n"); //FKOFM8</h1></body></html>\n";
+    strcat(html, "            http://");
+    strcat(html, ipAddr);
+    strcat(html, " ");
+    strcat(html, hostIP);
+    strcat(html, ":");
+    strcat(html, hostPort);
+    strcat(html, "\n        </h1>\n    </body>\n</html>\n");
     printf("inside get function\r\n");
 }
 
@@ -97,7 +106,7 @@ int main(int argc, char *argv[]) {
             printf("ERROR: The requested type is not supported.\n");
             error();
         }
-        send(connfd, html, strlen(html), 0);
+        send(connfd, &html, sizeof(html) -1, 0);
         printf("LOL HI");
     }
     
