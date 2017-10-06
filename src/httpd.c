@@ -9,24 +9,24 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <netdb.h>
 
 
 void head() {
      // returns the header of the page ( doesn't have to be a in it's own function can be) 
 }
 
-void get() {
+void get(char *html, char *ipAddr, char *hostPort, char *hostIP) {
     // generates a HTML5 page in memmory ( think it should be in a seperate function)
     // Itsactual content should include the URL of the requested page and the IP address and port number of the requesting client
     // format http://foo.com/page 123.123.123.123:4567
+    html = "HTTP/1.1 200, OK\n<!DOCTYPE><html><body><h1>FKOFM8</h1></body></html>\n";
+    printf("inside get function\r\n");
 }
 
 void post() {
    // same as get request plus the data in the body of the post request
-}
 
-void error() {    
-   // sends an error msg
 }
 
 
@@ -58,10 +58,17 @@ int main(int argc, char *argv[]) {
         if(connfd == 0) {
             perror("Connection failed...\n");
         }
-        
+       
+        //Get all info
+        char hostIP[500], hostPort[32], ipAddr[INET_ADDRSTRLEN];
+        struct sockaddr_in * clientSockAddr = (struct sockaddr_in*)&client;
+        struct in_addr clientIP = clientSockAddr->sin_addr;
+        getnameinfo((struct sockaddr *)&client, len, hostIP, sizeof(hostIP), hostPort, sizeof(hostPort), NI_NUMERICHOST | NI_NUMERICSERV);
+        inet_ntop(AF_INET, &clientIP, ipAddr, INET_ADDRSTRLEN);
+
         //Recieve from connfd, not sockfd
         ssize_t n = recv(connfd, &message, sizeof(message) - 1, 0);
-	char html[500] = "HTTP/1.1 200, OK\r\n\r\n<!DOCTYPE><html><body><h1>Hallu</h1></body></html>\r\n";
+	char html[500]; // "HTTP/1.1 200, OK\r\n\r\n<!DOCTYPE><html><body><h1>Hallu</h1></body></html>\r\n";
 	int n2 = send(connfd, &html, sizeof(html) - 1, 0);
 
         // need to check the first message and see if it is get, post or head
@@ -71,13 +78,12 @@ int main(int argc, char *argv[]) {
         //printf("the message is: %s", message);
         
         char mtype[5];
-        //mtype = strchr(message, ' ');
         memcpy(mtype, &message[0], 4);
         mtype[4] = '\0';
         
         if(!(strcmp(mtype, "GET "))) {
             printf("Get request\n");
-            get();
+            get(html, ipAddr, hostPort, hostIP);
         }
         else if(!(strcmp(mtype, "POST"))) {
             printf("Post request\n");
@@ -88,10 +94,11 @@ int main(int argc, char *argv[]) {
             head();
         }
         else {
-            printf("ERROR: The requestERROR: The requested type is not supported.\n");
+            printf("ERROR: The requested type is not supported.\n");
             error();
         }
-
+        send(connfd, html, strlen(html), 0);
+        printf("LOL HI");
     }
     
     return 0;
