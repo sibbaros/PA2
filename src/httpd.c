@@ -11,7 +11,6 @@
 #include <stdbool.h>
 #include <netdb.h>
 #include <time.h>
-//#include <syslog.h>
 
 
 void head() {
@@ -29,8 +28,8 @@ void get(char *html, char *ipAddr, char *clientPort, char *clientIP) {
     "\n<!DOCTYPE>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
     "    </head>\n    <body>\n        <h1>\n");
     strcat(html, "            http://");
-    strcat(html, ipAddr);
-    strcat(html, " ");
+    //strcat(html, ipAddr);
+    //strcat(html, " ");
     strcat(html, clientIP);
     strcat(html, ":");
     strcat(html, clientPort);
@@ -47,8 +46,8 @@ void post(char *html, char *ipAddr, char *clientPort, char *clientIP, char *data
     "\n<!DOCTYPE>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
     "    </head>\n    <body>\n        <h1>\n");
     strcat(html, "            http://");
-    strcat(html, ipAddr);
-    strcat(html, " ");
+    //strcat(html, ipAddr);
+    //strcat(html, " ");
     strcat(html, clientIP);
     strcat(html, ":");
     strcat(html, clientPort);
@@ -121,10 +120,31 @@ int main(int argc, char *argv[]) {
         //struct in_addr clientIP = clientSockAddr->sin_addr;
         getnameinfo((struct sockaddr *)&client, len, clientIP, sizeof(clientIP), clientPort, sizeof(clientPort), NI_NUMERICHOST | NI_NUMERICSERV);
         inet_ntop(AF_INET, &clientIP, ipAddr, INET_ADDRSTRLEN);
+        /*
+        char check[512];
+        check[0] = '\0';
+        strcat(check, hostIP);
+        printf("hallo");
+        fflush(stdout);
+        strcat(check, "  :  ");
+        printf("hallo2");
+        fflush(stdout);
+        printf("address: %d", ipAddr);
+        fflush(stdout);
+        strcat(check, ipAddr);
+        printf("hallo3");
+        fflush(stdout);
+        strcat(check, "\n");
+
+        printf("is it the same number %s", check);*/
 
 
         //Recieve from connfd, not sockfd
+        char arr[500];
         ssize_t n = recv(connfd, &message, sizeof(message) - 1, 0);
+        ssize_t info = recvfrom(connfd, arr, sizeof(arr) - 1, 0, (struct sockaddr*)clientSockAddr, sizeof(clientSockAddr));
+        //perror("perror\n");
+        //printf("ARRAY ER::::::%s", arr);
 	    char html[500];
 	    int n2 = send(connfd, &html, sizeof(html) - 1, 0);
 
@@ -139,19 +159,19 @@ int main(int argc, char *argv[]) {
         if(!(strcmp(mtype, "GET "))) {
             printf("Get request\n");
             get(html, ipAddr, clientPort, clientIP);
-            logFile(timeinfo, clientIP, clientPort, mtype);//request method, requested URL, response code
+            logFile(timeinfo, clientIP, clientPort, mtype);//requested URL, response code
         }
         else if(!(strcmp(mtype, "POST"))) {
             printf("Post request\n");
             char data[500];
             memcpy(data, &message[5], 400);
             post(html, ipAddr, clientPort, clientIP, data);
-            logFile(timeinfo, clientIP, clientPort, mtype); //request method, requested URL, response code
+            logFile(timeinfo, clientIP, clientPort, mtype); //requested URL, response code
         }
         else if(!(strcmp(mtype, "HEAD"))) {
             printf("Head request\n");
             head();
-            logFile(timeinfo, clientIP, clientPort, mtype);//request method, requested URL, response code
+            logFile(timeinfo, clientIP, clientPort, mtype);//requested URL, response code
         }
         else {
             printf("ERROR: The requested type is not supported.\n");
