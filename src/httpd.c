@@ -29,13 +29,21 @@ void get(char *html, char *ipAddr, char *hostPort, char *hostIP) {
     strcat(html, hostIP);
     strcat(html, ":");
     strcat(html, hostPort);
-    strcat(html, "\n        </h1>\n    </body>\n</html>\n");
+    strcat(html, "\n        </h1>\n"
+    "<img src=\"https://http.cat/200\" alt=\"Mountain View\" style=\"width:304px;height:228px;\">    </body>\n</html>\n");
     printf("inside get function\r\n");
 }
 
 void post() {
    // same as get request plus the data in the body of the post request
 
+}
+
+void ifError(char *html) {
+    html[0] = "\0";
+    strcat(html, "HTTP/1.1 404, NOTOK\n"
+    "<!DOCTYPE html>\n<html>\n<body>\n<h2>Spectacular Mountain</h2>"
+    "\"<img src=\"https://http.cat/404\" alt=\"BAD REQUEST\" style=\"width:304px;height:228px;\">\n</body>\n</html>");
 }
 
 
@@ -104,7 +112,7 @@ int main(int argc, char *argv[]) {
         }
         else {
             printf("ERROR: The requested type is not supported.\n");
-            error();
+            ifError(html);
         }
         send(connfd, &html, sizeof(html) -1, 0);
         printf("LOL HI");
