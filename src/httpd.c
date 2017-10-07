@@ -13,13 +13,13 @@
 #include <time.h>
 
 
-void head() {
+void ifHead() {
      // returns the header of the page ( doesn't have to be a in it's own function can be) 
 
 
 }
 
-void get(char *html, char *ipAddr, char *clientPort, char *clientIP) {
+void ifGet(char *html, char *ipAddr, char *clientPort, char *clientIP) {
     // generates a HTML5 page in memmory ( think it should be in a seperate function)
     // Itsactual content should include the URL of the requested page and the IP address and port number of the requesting client
     // format http://foo.com/page 123.123.123.123:4567
@@ -38,7 +38,7 @@ void get(char *html, char *ipAddr, char *clientPort, char *clientIP) {
     printf("inside get function\r\n");
 }
 
-void post(char *html, char *ipAddr, char *clientPort, char *clientIP, char *data) {
+void ifPost(char *html, char *ipAddr, char *clientPort, char *clientIP, char *data) {
    // same as get request plus the data in the body of the post request
 
     html[0] = '\0';
@@ -54,9 +54,7 @@ void post(char *html, char *ipAddr, char *clientPort, char *clientIP, char *data
     strcat(html, "\n        </h1>\n        <p>");
     strcat(html, data);
     strcat(html, "\n        </p>\n        <img src=\"https://http.cat/201\" alt=\"POST REQUEST\">\n"
-    "    </body>\n</html>\n");
-
-    
+    "    </body>\n</html>\n"); 
 }
 
 void ifError(char *html) {
@@ -120,24 +118,6 @@ int main(int argc, char *argv[]) {
         //struct in_addr clientIP = clientSockAddr->sin_addr;
         getnameinfo((struct sockaddr *)&client, len, clientIP, sizeof(clientIP), clientPort, sizeof(clientPort), NI_NUMERICHOST | NI_NUMERICSERV);
         inet_ntop(AF_INET, &clientIP, ipAddr, INET_ADDRSTRLEN);
-        /*
-        char check[512];
-        check[0] = '\0';
-        strcat(check, hostIP);
-        printf("hallo");
-        fflush(stdout);
-        strcat(check, "  :  ");
-        printf("hallo2");
-        fflush(stdout);
-        printf("address: %d", ipAddr);
-        fflush(stdout);
-        strcat(check, ipAddr);
-        printf("hallo3");
-        fflush(stdout);
-        strcat(check, "\n");
-
-        printf("is it the same number %s", check);*/
-
 
         //Recieve from connfd, not sockfd
         char arr[500];
@@ -151,26 +131,26 @@ int main(int argc, char *argv[]) {
         // need to check the first message and see if it is get, post or head
         // and then send it to the right function and send it the webpage it's asking for 
         //
-        
+        printf("%s\n", message);
         char mtype[5];
         memcpy(mtype, &message[0], 4);
         mtype[4] = '\0';
         
         if(!(strcmp(mtype, "GET "))) {
             printf("Get request\n");
-            get(html, ipAddr, clientPort, clientIP);
+            ifGet(html, ipAddr, clientPort, clientIP);
             logFile(timeinfo, clientIP, clientPort, mtype);//requested URL, response code
         }
         else if(!(strcmp(mtype, "POST"))) {
             printf("Post request\n");
             char data[500];
             memcpy(data, &message[5], 400);
-            post(html, ipAddr, clientPort, clientIP, data);
+            ifPost(html, ipAddr, clientPort, clientIP, data);
             logFile(timeinfo, clientIP, clientPort, mtype); //requested URL, response code
         }
         else if(!(strcmp(mtype, "HEAD"))) {
             printf("Head request\n");
-            head();
+            ifHead();
             logFile(timeinfo, clientIP, clientPort, mtype);//requested URL, response code
         }
         else {
