@@ -20,7 +20,7 @@ void head() {
 
 }
 
-void get(char *html, char *ipAddr, char *hostPort, char *hostIP) {
+void get(char *html, char *ipAddr, char *clientPort, char *clientIP) {
     // generates a HTML5 page in memmory ( think it should be in a seperate function)
     // Itsactual content should include the URL of the requested page and the IP address and port number of the requesting client
     // format http://foo.com/page 123.123.123.123:4567
@@ -31,15 +31,15 @@ void get(char *html, char *ipAddr, char *hostPort, char *hostIP) {
     strcat(html, "            http://");
     strcat(html, ipAddr);
     strcat(html, " ");
-    strcat(html, hostIP);
+    strcat(html, clientIP);
     strcat(html, ":");
-    strcat(html, hostPort);
+    strcat(html, clientPort);
     strcat(html, "\n        </h1>\n            "
     "\n        <img src=\"https://http.cat/200\" alt=\"GET REQUEST\">\n    </body>\n</html>\n");
     printf("inside get function\r\n");
 }
 
-void post(char *html, char *ipAddr, char *hostPort, char *hostIP, char *data) {
+void post(char *html, char *ipAddr, char *clientPort, char *clientIP, char *data) {
    // same as get request plus the data in the body of the post request
 
     html[0] = '\0';
@@ -49,9 +49,9 @@ void post(char *html, char *ipAddr, char *hostPort, char *hostIP, char *data) {
     strcat(html, "            http://");
     strcat(html, ipAddr);
     strcat(html, " ");
-    strcat(html, hostIP);
+    strcat(html, clientIP);
     strcat(html, ":");
-    strcat(html, hostPort);
+    strcat(html, clientPort);
     strcat(html, "\n        </h1>\n        <p>");
     strcat(html, data);
     strcat(html, "\n        </p>\n        <img src=\"https://http.cat/201\" alt=\"POST REQUEST\">\n"
@@ -69,20 +69,12 @@ void ifError(char *html) {
     " alt=\"BAD REQUEST\">\n    </body>\n</html>");
 }
 
-void logFile(struct tm * timeinfo) {
-    char logcode[512];
-    logcode[0]= "\0";
-
-    strcat(logcode, asctime (timeinfo));
-    strcat(logcode, " : ");
-    //strcat();
-    //strcat();
-    //strcat();
+void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, char *request) {
 
     FILE *f;
 
     f = fopen("./src/file.log", "a" );
-    fprintf(f, "%s : \n", logcode);
+    fprintf(f, "%s : %s:%s  %s \n", asctime (timeinfo), clientIP, clientPort, request);
     fclose(f);
 }
 
@@ -113,6 +105,7 @@ int main(int argc, char *argv[]) {
     bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));
     socklen_t len = (socklen_t) sizeof(client);    
     listen(sockfd, 100);
+
     for(;;) {
         //We first have to accept a connection
         socklen_t len = (socklen_t) sizeof(client);
@@ -123,11 +116,12 @@ int main(int argc, char *argv[]) {
         }
        
         //Get all info that we need from the client
-        char hostIP[500], hostPort[32], ipAddr[INET_ADDRSTRLEN];
+        char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN];
         struct sockaddr_in * clientSockAddr = (struct sockaddr_in*)&client;
-        struct in_addr clientIP = clientSockAddr->sin_addr;
-        getnameinfo((struct sockaddr *)&client, len, hostIP, sizeof(hostIP), hostPort, sizeof(hostPort), NI_NUMERICHOST | NI_NUMERICSERV);
+        //struct in_addr clientIP = clientSockAddr->sin_addr;
+        getnameinfo((struct sockaddr *)&client, len, clientIP, sizeof(clientIP), clientPort, sizeof(clientPort), NI_NUMERICHOST | NI_NUMERICSERV);
         inet_ntop(AF_INET, &clientIP, ipAddr, INET_ADDRSTRLEN);
+
 
         //Recieve from connfd, not sockfd
         ssize_t n = recv(connfd, &message, sizeof(message) - 1, 0);
@@ -144,25 +138,25 @@ int main(int argc, char *argv[]) {
         
         if(!(strcmp(mtype, "GET "))) {
             printf("Get request\n");
-            get(html, ipAddr, hostPort, hostIP);
-            logFile(timeinfo);
+            get(html, ipAddr, clientPort, clientIP);
+            logFile(timeinfo, clientIP, clientPort, mtype);//request method, requested URL, response code
         }
         else if(!(strcmp(mtype, "POST"))) {
             printf("Post request\n");
             char data[500];
             memcpy(data, &message[5], 400);
-            post(html, ipAddr, hostPort, hostIP, data);
-            logFile(timeinfo);
+            post(html, ipAddr, clientPort, clientIP, data);
+            logFile(timeinfo, clientIP, clientPort, mtype); //request method, requested URL, response code
         }
         else if(!(strcmp(mtype, "HEAD"))) {
             printf("Head request\n");
             head();
-            logFile(timeinfo);
+            logFile(timeinfo, clientIP, clientPort, mtype);//request method, requested URL, response code
         }
         else {
             printf("ERROR: The requested type is not supported.\n");
             ifError(html);
-            logFile(timeinfo);
+            logFile(timeinfo, clientIP, clientPort, "ERROR");
         }
         send(connfd, &html, sizeof(html) -1, 0);
     }
