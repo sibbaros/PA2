@@ -10,10 +10,14 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <netdb.h>
+#include <time.h>
+//#include <syslog.h>
 
 
 void head() {
      // returns the header of the page ( doesn't have to be a in it's own function can be) 
+
+
 }
 
 void get(char *html, char *ipAddr, char *hostPort, char *hostIP) {
@@ -37,6 +41,7 @@ void get(char *html, char *ipAddr, char *hostPort, char *hostIP) {
 
 void post(char *html, char *ipAddr, char *hostPort, char *hostIP, char *data) {
    // same as get request plus the data in the body of the post request
+
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\nContent-type: text/html\n"
     "\n<!DOCTYPE>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
@@ -51,6 +56,7 @@ void post(char *html, char *ipAddr, char *hostPort, char *hostIP, char *data) {
     strcat(html, data);
     strcat(html, "\n        </p>\n        <img src=\"https://http.cat/201\" alt=\"POST REQUEST\">\n"
     "    </body>\n</html>\n");
+
     
 }
 
@@ -63,11 +69,34 @@ void ifError(char *html) {
     " alt=\"BAD REQUEST\">\n    </body>\n</html>");
 }
 
+void logFile(struct tm * timeinfo) {
+    char logcode[512];
+    logcode[0]= "\0";
+
+    strcat(logcode, asctime (timeinfo));
+    strcat(logcode, " : ");
+    //strcat();
+    //strcat();
+    //strcat();
+
+    FILE *f;
+
+    f = fopen("./src/file.log", "a" );
+    fprintf(f, "%s : \n", logcode);
+    fclose(f);
+}
+
 
 int main(int argc, char *argv[]) {
     int sockfd, port;
     struct sockaddr_in server, client;
+    time_t currenttime;
+    struct tm * timeinfo;
     char message[512];
+
+    time ( &currenttime );
+    timeinfo = localtime ( &currenttime );
+    //printf ( "Current local time and date: %s", asctime (timeinfo) );
     
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
  
@@ -79,6 +108,7 @@ int main(int argc, char *argv[]) {
     port = atoi(argv[1]);
     server.sin_port = htons(port);
     printf("Connection with port: %d\n", port);
+    printf("printing argc: %d\n", argc);
     
     bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));
     socklen_t len = (socklen_t) sizeof(client);    
@@ -136,20 +166,24 @@ int main(int argc, char *argv[]) {
         if(!(strcmp(mtype, "GET "))) {
             printf("Get request\n");
             get(html, ipAddr, clientPort, clientIP);
+            logFile(timeinfo);
         }
         else if(!(strcmp(mtype, "POST"))) {
             printf("Post request\n");
             char data[500];
             memcpy(data, &message[5], 400);
             post(html, ipAddr, clientPort, clientIP, data);
+            logFile(timeinfo);
         }
         else if(!(strcmp(mtype, "HEAD"))) {
             printf("Head request\n");
             head();
+            logFile(timeinfo);
         }
         else {
             printf("ERROR: The requested type is not supported.\n");
             ifError(html);
+            logFile(timeinfo);
         }
         send(connfd, &html, sizeof(html) -1, 0);
     }
