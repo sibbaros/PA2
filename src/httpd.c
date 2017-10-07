@@ -28,8 +28,6 @@ void ifGet(char *html, char *ipAddr, char *clientPort, char *clientIP) {
     "\n<!DOCTYPE>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
     "    </head>\n    <body>\n        <h1>\n");
     strcat(html, "            http://");
-    //strcat(html, ipAddr);
-    //strcat(html, " ");
     strcat(html, clientIP);
     strcat(html, ":");
     strcat(html, clientPort);
@@ -46,8 +44,6 @@ void ifPost(char *html, char *ipAddr, char *clientPort, char *clientIP, char *da
     "\n<!DOCTYPE>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
     "    </head>\n    <body>\n        <h1>\n");
     strcat(html, "            http://");
-    //strcat(html, ipAddr);
-    //strcat(html, " ");
     strcat(html, clientIP);
     strcat(html, ":");
     strcat(html, clientPort);
@@ -113,19 +109,16 @@ int main(int argc, char *argv[]) {
         }
        
         //Get all info that we need from the client
-        char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN];
-        struct sockaddr_in * clientSockAddr = (struct sockaddr_in*)&client;
+        char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
+        //struct sockaddr_in * clientSockAddr = (struct sockaddr_in*)&client;
         //struct in_addr clientIP = clientSockAddr->sin_addr;
-        getnameinfo((struct sockaddr *)&client, len, clientIP, sizeof(clientIP), clientPort, sizeof(clientPort), NI_NUMERICHOST | NI_NUMERICSERV);
+        getnameinfo((struct sockaddr *)&client, len, clientIP, sizeof(clientIP), clientPort, 
+            sizeof(clientPort), NI_NUMERICHOST | NI_NUMERICSERV);
         inet_ntop(AF_INET, &clientIP, ipAddr, INET_ADDRSTRLEN);
 
-        //Recieve from connfd, not sockfd
-        char arr[500];
-        ssize_t n = recv(connfd, &message, sizeof(message) - 1, 0);
-        ssize_t info = recvfrom(connfd, arr, sizeof(arr) - 1, 0, (struct sockaddr*)clientSockAddr, sizeof(clientSockAddr));
-        //perror("perror\n");
-        //printf("ARRAY ER::::::%s", arr);
-	    char html[500];
+        ssize_t n = recvfrom(connfd, &message, sizeof(message) - 1, 0, 
+            (struct sockaddr*)&client, &len);
+
 	    int n2 = send(connfd, &html, sizeof(html) - 1, 0);
 
         // need to check the first message and see if it is get, post or head
