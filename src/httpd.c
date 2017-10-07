@@ -19,7 +19,7 @@ void ifHead() {
 
 }
 
-void ifGet(char *html, char *ipAddr, char *clientPort, char *clientIP) {
+void ifGet(char *html, char *clientPort, char *clientIP) {
     // generates a HTML5 page in memmory ( think it should be in a seperate function)
     // Itsactual content should include the URL of the requested page and the IP address and port number of the requesting client
     // format http://foo.com/page 123.123.123.123:4567
@@ -36,7 +36,7 @@ void ifGet(char *html, char *ipAddr, char *clientPort, char *clientIP) {
     printf("inside get function\r\n");
 }
 
-void ifPost(char *html, char *ipAddr, char *clientPort, char *clientIP, char *data) {
+void ifPost(char *html, char *clientPort, char *clientIP, char *data) {
    // same as get request plus the data in the body of the post request
 
     html[0] = '\0';
@@ -131,14 +131,14 @@ int main(int argc, char *argv[]) {
         
         if(!(strcmp(mtype, "GET "))) {
             printf("Get request\n");
-            ifGet(html, ipAddr, clientPort, clientIP);
+            ifGet(html, clientPort, clientIP);
             logFile(timeinfo, clientIP, clientPort, mtype);//requested URL, response code
         }
         else if(!(strcmp(mtype, "POST"))) {
             printf("Post request\n");
             char data[500];
             memcpy(data, &message[5], 400);
-            ifPost(html, ipAddr, clientPort, clientIP, data);
+            ifPost(html, clientPort, clientIP, data);
             logFile(timeinfo, clientIP, clientPort, mtype); //requested URL, response code
         }
         else if(!(strcmp(mtype, "HEAD"))) {
