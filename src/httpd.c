@@ -21,7 +21,7 @@ void get(char *html, char *ipAddr, char *hostPort, char *hostIP) {
     // Itsactual content should include the URL of the requested page and the IP address and port number of the requesting client
     // format http://foo.com/page 123.123.123.123:4567
     html[0] = '\0';
-    strcat(html, "HTTP/1.1 200, OK\nContent-type: text/html\n"
+    strcat(html, "\nHTTP/1.1 200, OK\nContent-type: text/html\n"
     "\n<!DOCTYPE>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
     "    </head>\n    <body>\n        <h1>\n");
     strcat(html, "            http://");
@@ -30,37 +30,37 @@ void get(char *html, char *ipAddr, char *hostPort, char *hostIP) {
     strcat(html, hostIP);
     strcat(html, ":");
     strcat(html, hostPort);
-    strcat(html, "\n        </h1>\n"
-    "<img src=\"https://http.cat/200\" alt=\"Mountain View\" style=\"width:304px;height:228px;\">    </body>\n</html>\n");
+    strcat(html, "\n        </h1>\n            "
+    "\n        <img src=\"https://http.cat/200\" alt=\"GET REQUEST\">\n    </body>\n</html>\n");
     printf("inside get function\r\n");
 }
 
 void post(char *html, char *ipAddr, char *hostPort, char *hostIP, char *data) {
    // same as get request plus the data in the body of the post request
     html[0] = '\0';
-    strcat(html, "HTTP/1.1 200, OK\nContent-type: text/html\n"
+    strcat(html, "\nHTTP/1.1 200, OK\nContent-type: text/html\n"
     "\n<!DOCTYPE>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
-    "    </head>\n    <body>\n       <h1>\n");
+    "    </head>\n    <body>\n        <h1>\n");
     strcat(html, "            http://");
     strcat(html, ipAddr);
     strcat(html, " ");
     strcat(html, hostIP);
     strcat(html, ":");
     strcat(html, hostPort);
-    strcat(html, "\n        </h1>\n");
+    strcat(html, "\n        </h1>\n        <p>");
     strcat(html, data);
-    strcat(html, "<img src=\"https://http.cat/200\" alt=\"Mountain View\" style=\"width:304px;height:228px;\">    </body>\n</html>\n");
+    strcat(html, "\n        </p>\n        <img src=\"https://http.cat/201\" alt=\"POST REQUEST\">\n"
+    "    </body>\n</html>\n");
     
 }
 
 void ifError(char *html) {
     html[0] = '\0';
-    strcat(html, "HTTP/1.1 404, NOTOK\n"
+    strcat(html, "\nHTTP/1.1 404, NOTOK\n"
     "<!DOCTYPE html>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
     "    </head>\n    <body>\n       <h2>~~OOPS something went wrong~~       </h2>"
-    "            \"<img src=\"https://blog.hubspot.com/hs-fs/hubfs/tinsanity-404"
-    "-page.gif?t=1507329261965&width=495&name=tinsanity-404-page.gif\""
-    " alt=\"BAD REQUEST\" style=\"width:304px;height:228px;\">\n    </body>\n</html>");
+    "            \"        <img src=\"https://http.cat/404\""
+    " alt=\"BAD REQUEST\">\n    </body>\n</html>");
 }
 
 
@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
         else if(!(strcmp(mtype, "POST"))) {
             printf("Post request\n");
             char data[500];
-            memcpy(data, &message[5], 30);
+            memcpy(data, &message[5], 400);
             post(html, ipAddr, hostPort, hostIP, data);
         }
         else if(!(strcmp(mtype, "HEAD"))) {
