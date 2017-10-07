@@ -57,10 +57,10 @@ void post(char *html, char *ipAddr, char *hostPort, char *hostIP) {
 void ifError(char *html) {
     html[0] = "\0";
     strcat(html, "HTTP/1.1 404, NOTOK\n"
-    "<!DOCTYPE html>\n<html>\n<body>\n<h2>Spectacular Mountain</h2>"
-    "\"<img src=\"https://blog.hubspot.com/hs-fs/hubfs/tinsanity-404"
+    "<!DOCTYPE html>\n<html>\n    <body>\n       <h2>~~OOPS something went wrong~~       </h2>"
+    "            \"<img src=\"https://blog.hubspot.com/hs-fs/hubfs/tinsanity-404"
     "-page.gif?t=1507329261965&width=495&name=tinsanity-404-page.gif\""
-    " alt=\"BAD REQUEST\" style=\"width:304px;height:228px;\">\n</body>\n</html>");
+    " alt=\"BAD REQUEST\" style=\"width:304px;height:228px;\">\n    </body>\n</html>");
 }
 
 
