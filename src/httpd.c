@@ -10,10 +10,14 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <netdb.h>
+#include <time.h>
+//#include <syslog.h>
 
 
 void head() {
      // returns the header of the page ( doesn't have to be a in it's own function can be) 
+
+
 }
 
 void get(char *html, char *ipAddr, char *hostPort, char *hostIP) {
@@ -37,12 +41,10 @@ void get(char *html, char *ipAddr, char *hostPort, char *hostIP) {
 void post(char *html, char *ipAddr, char *hostPort, char *hostIP) {
    // same as get request plus the data in the body of the post request
 
-    char data;
+    char data[512];
     html[0] = "\0";
     strcat(html, "HTTP/1.1 200, OK\nContent-type: text/html\n"
-    "\n<!DOCTYPE>\n<html>\n    <body>\n");
-    strcat(html, data);
-    strcat(html, "       <h1>\n"); //FKOFM8</h1></body></html>\n";
+    "\n<!DOCTYPE>\n<html>\n    <body>\n  <h1>\n"); //FKOFM8</h1></body></html>\n";
     strcat(html, "            http://");
     strcat(html, ipAddr);
     strcat(html, " ");
@@ -50,7 +52,10 @@ void post(char *html, char *ipAddr, char *hostPort, char *hostIP) {
     strcat(html, ":");
     strcat(html, hostPort);
     strcat(html, "\n        </h1>\n"
-    "<img src=\"https://http.cat/200\" alt=\"Mountain View\" style=\"width:304px;height:228px;\">    </body>\n</html>\n");
+    "<img src=\"https://http.cat/200\" alt=\"Mountain View\" style=\"width:304px;height:228px;\"> <p>\n");
+    strcat(html, data);
+    strcat(html, "    </body>\n</html>\n");
+
     
 }
 
@@ -63,11 +68,34 @@ void ifError(char *html) {
     " alt=\"BAD REQUEST\" style=\"width:304px;height:228px;\">\n</body>\n</html>");
 }
 
+void logFile(struct tm * timeinfo) {
+    char logcode[512];
+    logcode[0]= "\0";
+
+    strcat(logcode, asctime (timeinfo));
+    strcat(logcode, " : ");
+    //strcat();
+    //strcat();
+    //strcat();
+
+    FILE *f;
+
+    f = fopen("./src/file.log", "a" );
+    fprintf(f, "%s : \n", logcode);
+    fclose(f);
+}
+
 
 int main(int argc, char *argv[]) {
     int sockfd, port;
     struct sockaddr_in server, client;
+    time_t currenttime;
+    struct tm * timeinfo;
     char message[512];
+
+    time ( &currenttime );
+    timeinfo = localtime ( &currenttime );
+    //printf ( "Current local time and date: %s", asctime (timeinfo) );
     
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
  
@@ -79,6 +107,7 @@ int main(int argc, char *argv[]) {
     port = atoi(argv[1]);
     server.sin_port = htons(port);
     printf("Connection with port: %d\n", port);
+    printf("printing argc: %d\n", argc);
     
     bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));
     socklen_t len = (socklen_t) sizeof(client);    
@@ -102,14 +131,12 @@ int main(int argc, char *argv[]) {
 
         //Recieve from connfd, not sockfd
         ssize_t n = recv(connfd, &message, sizeof(message) - 1, 0);
-	char html[500]; // "HTTP/1.1 200, OK\r\n\r\n<!DOCTYPE><html><body><h1>Hallu</h1></body></html>\r\n";
-	int n2 = send(connfd, &html, sizeof(html) - 1, 0);
+	    char html[500]; // "HTTP/1.1 200, OK\r\n\r\n<!DOCTYPE><html><body><h1>Hallu</h1></body></html>\r\n";
+	    int n2 = send(connfd, &html, sizeof(html) - 1, 0);
 
         // need to check the first message and see if it is get, post or head
         // and then send it to the right function and send it the webpage it's asking for 
         //
-	//printf("%d\n", n2);
-        //printf("the message is: %s", message);
         
         char mtype[5];
         memcpy(mtype, &message[0], 4);
@@ -118,18 +145,22 @@ int main(int argc, char *argv[]) {
         if(!(strcmp(mtype, "GET "))) {
             printf("Get request\n");
             get(html, ipAddr, hostPort, hostIP);
+            logFile(timeinfo);
         }
         else if(!(strcmp(mtype, "POST"))) {
             printf("Post request\n");
             post(html, ipAddr, hostPort, hostIP);
+            logFile(timeinfo);
         }
         else if(!(strcmp(mtype, "HEAD"))) {
             printf("Head request\n");
             head();
+            logFile(timeinfo);
         }
         else {
             printf("ERROR: The requested type is not supported.\n");
             ifError(html);
+            logFile(timeinfo);
         }
         send(connfd, &html, sizeof(html) -1, 0);
         printf("LOL HI\n");
