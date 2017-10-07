@@ -34,7 +34,7 @@ void get(char *html, char *ipAddr, char *hostPort, char *hostIP) {
     printf("inside get function\r\n");
 }
 
-void post() {
+void post(char *html, char *ipAddr, char *hostPort, char *hostIP) {
    // same as get request plus the data in the body of the post request
 
     html[0] = "\0";
@@ -54,7 +54,9 @@ void ifError(char *html) {
     html[0] = "\0";
     strcat(html, "HTTP/1.1 404, NOTOK\n"
     "<!DOCTYPE html>\n<html>\n<body>\n<h2>Spectacular Mountain</h2>"
-    "\"<img src=\"https://http.cat/404\" alt=\"BAD REQUEST\" style=\"width:304px;height:228px;\">\n</body>\n</html>");
+    "\"<img src=\"https://blog.hubspot.com/hs-fs/hubfs/tinsanity-404"
+    "-page.gif?t=1507329261965&width=495&name=tinsanity-404-page.gif\""
+    " alt=\"BAD REQUEST\" style=\"width:304px;height:228px;\">\n</body>\n</html>");
 }
 
 
@@ -115,7 +117,7 @@ int main(int argc, char *argv[]) {
         }
         else if(!(strcmp(mtype, "POST"))) {
             printf("Post request\n");
-            post();
+            post(html, ipAddr, hostPort, hostIP);
         }
         else if(!(strcmp(mtype, "HEAD"))) {
             printf("Head request\n");
