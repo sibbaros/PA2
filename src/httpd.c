@@ -39,7 +39,9 @@ void post(char *html, char *ipAddr, char *hostPort, char *hostIP) {
 
     html[0] = "\0";
     strcat(html, "HTTP/1.1 200, OK\nContent-type: text/html\n"
-    "\n<!DOCTYPE>\n<html>\n    <body>\n        <h1>\n"); //FKOFM8</h1></body></html>\n";
+    "\n<!DOCTYPE>\n<html>\n    <body>\n");
+    strcat(html, data);
+    strcat(html, "       <h1>\n"); //FKOFM8</h1></body></html>\n";
     strcat(html, "            http://");
     strcat(html, ipAddr);
     strcat(html, " ");
@@ -48,6 +50,7 @@ void post(char *html, char *ipAddr, char *hostPort, char *hostIP) {
     strcat(html, hostPort);
     strcat(html, "\n        </h1>\n"
     "<img src=\"https://http.cat/200\" alt=\"Mountain View\" style=\"width:304px;height:228px;\">    </body>\n</html>\n");
+    
 }
 
 void ifError(char *html) {
@@ -128,7 +131,7 @@ int main(int argc, char *argv[]) {
             ifError(html);
         }
         send(connfd, &html, sizeof(html) -1, 0);
-        printf("LOL HI");
+        printf("LOL HI\n");
     }
     
     return 0;
