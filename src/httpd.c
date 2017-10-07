@@ -37,6 +37,7 @@ void get(char *html, char *ipAddr, char *hostPort, char *hostIP) {
 void post(char *html, char *ipAddr, char *hostPort, char *hostIP) {
    // same as get request plus the data in the body of the post request
 
+    char data;
     html[0] = "\0";
     strcat(html, "HTTP/1.1 200, OK\nContent-type: text/html\n"
     "\n<!DOCTYPE>\n<html>\n    <body>\n");
