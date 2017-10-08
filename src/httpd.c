@@ -69,7 +69,6 @@ void ifError(char *html) {
 }
 
 void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, char *request, char *requestURL, char *rCode) {
-
     FILE *f;
 
     f = fopen("./src/file.log", "a" );
@@ -88,10 +87,8 @@ int main(int argc, char *argv[]) {
     char message[512], request[512];
     time ( &currenttime );
     timeinfo = localtime ( &currenttime );
-    //printf ( "Current local time and date: %s", asctime (timeinfo) );
     
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
- 
     memset(&server, 0, sizeof(server));
 
     for(int i = 0; i < MAX_CLIENTS; i++) {
@@ -137,8 +134,7 @@ int main(int argc, char *argv[]) {
 
 
         // need to check the first message and see if it is get, post or head
-        // and then send it to the right function and send it the webpage it's asking for 
-        //
+        // and then send it to the right function to respond accordingly
 
         strncpy(request, message, sizeof(request)-1);
         requestURL = strchr(request, '/');
@@ -148,8 +144,6 @@ int main(int argc, char *argv[]) {
         mType[4] = '\0';
         char rCode[8];
         strcpy(rCode, "200, OK");
-
-
         
         if(!(strcmp(mType, "GET "))) {
             printf("Get request\n");
