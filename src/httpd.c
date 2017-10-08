@@ -2,7 +2,7 @@
 /**                                                                            **/
 /** T-409-TSAM-2017: Computer Networks Programming Assignment 2 – httpd Part 1 **/
 /**          By Alexandra Geirsdóttir & Sigurbjörg Rós Sigurðardóttir          **/
-/**                             October 6 2017                                 **/
+/**                             October 9 2017                                 **/
 /**                                                                            **/
 /********************************************************************************/
 
@@ -110,8 +110,7 @@ int main(int argc, char *argv[]) {
     printf("Connection with port: %d\n", port);
     printf("printing argc: %d\n", argc);
     
-    bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));
-    socklen_t len = (socklen_t) sizeof(client);    
+    bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));    
     rc = listen(sockfd, 100);
     if(rc < 0) {
         perror("listen() failed");
@@ -127,6 +126,7 @@ int main(int argc, char *argv[]) {
     fds[0].fd = sockfd;
     fds[0].events = POLLIN;
     do {
+        socklen_t len = (socklen_t) sizeof(client);
         rc = poll(fds, numFds, TIMEOUT);
         if (rc < 0) {
             perror("poll() failed");
@@ -147,14 +147,14 @@ int main(int argc, char *argv[]) {
 
             if(fds[i].revents != POLLIN) {
                 printf("Error! revents = %d\n", fds[i].revents);
-                endServ = 1;
-                break;
+                closeConn = 1;
             }
 
             if(fds[i].fd == sockfd) {    // This is for a new connection
                 printf("Listening socket reading\n");
             
-                do {
+                
+                    len = (socklen_t) sizeof(client);
                     newSD = accept(sockfd,(struct sockaddr *) &client, &len);
                     if(newSD < 0) {
                         if(errno != EWOULDBLOCK) {
@@ -168,11 +168,11 @@ int main(int argc, char *argv[]) {
                     fds[numFds].fd = newSD;
                     fds[numFds].events = POLLIN;
                     numFds++;
-                }while(newSD != -1);
-            }
-            else {    // This is for an already existing connection
+                }
+                else {
+                // This is for an already existing connection
                 closeConn = 0;
-                do{
+                
                     
                     char *requestURL;
                     rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
@@ -227,8 +227,8 @@ int main(int argc, char *argv[]) {
                     logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode); // response code
                     send(fds[i].fd, &html, sizeof(html) -1, 0);
 
-                }while(1);
-            }
+                }
+            
         }
         currentClients++;
     }while(1);
