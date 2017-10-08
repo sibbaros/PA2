@@ -17,6 +17,7 @@
 #include <stdbool.h>
 #include <netdb.h>
 #include <time.h>
+#include <poll.h>
 
 
 void ifHead() {
@@ -26,9 +27,11 @@ void ifHead() {
 }
 
 void ifGet(char *html, char *clientPort, char *clientIP) {
-    // generates a HTML5 page in memmory ( think it should be in a seperate function)
-    // Itsactual content should include the URL of the requested page and the IP address and port number of the requesting client
-    // format http://foo.com/page 123.123.123.123:4567
+    // generates a HTML5 page in memmory ( think it should be i
+    // n a seperate function). It's actual content should include 
+    // the URL of the requested page and the IP address and port 
+    // number of the requesting client format 
+    // http://foo.com/page 123.123.123.123:4567
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\nContent-type: text/html\n"
     "\n<!DOCTYPE>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
@@ -75,10 +78,12 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, char *reque
 
 
 int main(int argc, char *argv[]) {
-    int sockfd, port;
+    const int MAX_CLIENTS = 100;
+    int sockfd, port, rc;
     struct sockaddr_in server, client;
     time_t currenttime;
     struct tm * timeinfo;
+    struct pollfd fds[MAX_CLIENTS];
     char message[512];
 
     time ( &currenttime );
@@ -88,6 +93,12 @@ int main(int argc, char *argv[]) {
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
  
     memset(&server, 0, sizeof(server));
+
+    for(int i = 0; i < MAX_CLIENTS; i++) {
+        fds[i].fd = -1;
+        fds[i].events = POLLIN;
+    }
+    fds[0].fd = sockfd;
     
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
