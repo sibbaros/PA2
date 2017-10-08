@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in server, client;
     time_t currenttime;
     struct tm * timeinfo;
-    char message[512];
+    char message[512], request;
 
     time ( &currenttime );
     timeinfo = localtime ( &currenttime );
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
         }
        
         //Get all info that we need from the client
-        char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
+        char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500], *requestURL;
         //struct sockaddr_in * clientSockAddr = (struct sockaddr_in*)&client;
         //struct in_addr clientIP = clientSockAddr->sin_addr;
         getnameinfo((struct sockaddr *)&client, len, clientIP, sizeof(clientIP), clientPort, 
@@ -121,10 +121,15 @@ int main(int argc, char *argv[]) {
 
 	    int n2 = send(connfd, &html, sizeof(html) - 1, 0);
 
+
         // need to check the first message and see if it is get, post or head
         // and then send it to the right function and send it the webpage it's asking for 
         //
-        printf("%s\n", message);
+
+        strncpy(request, message, sizeof(request)-1);
+        requestURL = strchr(request, '/');
+        requestURL = strtok(requestURL, " ");
+        printf("second : %s\n", requestURL);
         char mtype[5];
         memcpy(mtype, &message[0], 4);
         mtype[4] = '\0';
