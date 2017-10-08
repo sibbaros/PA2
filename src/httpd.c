@@ -1,5 +1,11 @@
+/********************************************************************************/
+/**                                                                            **/
+/** T-409-TSAM-2017: Computer Networks Programming Assignment 2 – httpd Part 1 **/
+/**          By Alexandra Geirsdóttir & Sigurbjörg Rós Sigurðardóttir          **/
+/**                             October 6 2017                                 **/
+/**                                                                            **/
+/********************************************************************************/
 
-/* your code goes here. */
 #include <assert.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -31,9 +37,7 @@ void ifGet(char *html, char *clientPort, char *clientIP) {
     strcat(html, clientIP);
     strcat(html, ":");
     strcat(html, clientPort);
-    strcat(html, "\n        </h1>\n            "
-    "\n        <img src=\"https://http.cat/200\" alt=\"GET REQUEST\">\n    </body>\n</html>\n");
-    printf("inside get function\r\n");
+    strcat(html, "\n        </h1>\n    </body>\n</html>\n");
 }
 
 void ifPost(char *html, char *clientPort, char *clientIP, char *data) {
@@ -49,17 +53,15 @@ void ifPost(char *html, char *clientPort, char *clientIP, char *data) {
     strcat(html, clientPort);
     strcat(html, "\n        </h1>\n        <p>");
     strcat(html, data);
-    strcat(html, "\n        </p>\n        <img src=\"https://http.cat/201\" alt=\"POST REQUEST\">\n"
-    "    </body>\n</html>\n"); 
+    strcat(html, "\n        </p>\n    </body>\n</html>\n"); 
 }
 
 void ifError(char *html) {
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 404, NOTOK\n"
     "<!DOCTYPE html>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
-    "    </head>\n    <body>\n       <h2>~~OOPS something went wrong~~       </h2>"
-    "            \"        <img src=\"https://http.cat/404\""
-    " alt=\"BAD REQUEST\">\n    </body>\n</html>");
+    "    </head>\n    <body>\n        <h2>\n            ~~OOPS something went wrong~~"
+    "\n        </h2>\n    </body>\n</html>");
 }
 
 void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, char *request) {
@@ -125,32 +127,31 @@ int main(int argc, char *argv[]) {
         // and then send it to the right function and send it the webpage it's asking for 
         //
         printf("%s\n", message);
-        char mtype[5];
+        char mtype[6];
         memcpy(mtype, &message[0], 4);
         mtype[4] = '\0';
         
         if(!(strcmp(mtype, "GET "))) {
             printf("Get request\n");
             ifGet(html, clientPort, clientIP);
-            logFile(timeinfo, clientIP, clientPort, mtype);//requested URL, response code
         }
         else if(!(strcmp(mtype, "POST"))) {
             printf("Post request\n");
             char data[500];
             memcpy(data, &message[5], 400);
             ifPost(html, clientPort, clientIP, data);
-            logFile(timeinfo, clientIP, clientPort, mtype); //requested URL, response code
         }
         else if(!(strcmp(mtype, "HEAD"))) {
             printf("Head request\n");
             ifHead();
-            logFile(timeinfo, clientIP, clientPort, mtype);//requested URL, response code
         }
         else {
             printf("ERROR: The requested type is not supported.\n");
             ifError(html);
-            logFile(timeinfo, clientIP, clientPort, "ERROR");
+            strncpy(mtype, "ERROR", sizeof(mtype) -1);
+            
         }
+        logFile(timeinfo, clientIP, clientPort, mtype); //requested URL, response code
         send(connfd, &html, sizeof(html) -1, 0);
     }
     return 0;
