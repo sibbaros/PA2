@@ -67,12 +67,12 @@ void ifError(char *html) {
     "\n        </h2>\n    </body>\n</html>");
 }
 
-void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, char *request) {
+void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, char *request, char *requestURL) {
 
     FILE *f;
 
     f = fopen("./src/file.log", "a" );
-    fprintf(f, "%s : %s:%s  %s \n", asctime (timeinfo), clientIP, clientPort, request);
+    fprintf(f, "%s : %s:%s  %s  %s \n", asctime (timeinfo), clientIP, clientPort, request, requestURL);
     fclose(f);
 }
 
@@ -84,8 +84,7 @@ int main(int argc, char *argv[]) {
     time_t currenttime;
     struct tm * timeinfo;
     struct pollfd fds[MAX_CLIENTS];
-    char message[512];
-
+    char message[512], request[512];
     time ( &currenttime );
     timeinfo = localtime ( &currenttime );
     //printf ( "Current local time and date: %s", asctime (timeinfo) );
@@ -123,6 +122,7 @@ int main(int argc, char *argv[]) {
        
         //Get all info that we need from the client
         char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
+        char *requestURL;
         //struct sockaddr_in * clientSockAddr = (struct sockaddr_in*)&client;
         //struct in_addr clientIP = clientSockAddr->sin_addr;
         getnameinfo((struct sockaddr *)&client, len, clientIP, sizeof(clientIP), clientPort, 
@@ -134,11 +134,15 @@ int main(int argc, char *argv[]) {
 
 	    int n2 = send(connfd, &html, sizeof(html) - 1, 0);
 
+
         // need to check the first message and see if it is get, post or head
         // and then send it to the right function and send it the webpage it's asking for 
         //
-        printf("%s\n", message);
-        char mType[6];
+
+        strncpy(request, message, sizeof(request)-1);
+        requestURL = strchr(request, '/');
+        requestURL = strtok(requestURL, " ");
+        char mType[5];
         memcpy(mType, &message[0], 4);
         mType[4] = '\0';
         
@@ -161,7 +165,7 @@ int main(int argc, char *argv[]) {
             ifError(html);
             strncpy(mType, "ERROR", sizeof(mType) -1);
         }
-        logFile(timeinfo, clientIP, clientPort, mType); //requested URL, response code
+        logFile(timeinfo, clientIP, clientPort, mType, requestURL); //requested URL, response code
         send(connfd, &html, sizeof(html) -1, 0);
     }
     return 0;
