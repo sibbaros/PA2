@@ -19,7 +19,7 @@
 #include <netdb.h>
 #include <time.h>
 #include <poll.h>
-
+#include <unistd.h>
 
 void ifHead() {
      // returns the header of the page ( doesn't have to be a in it's own function can be) 
@@ -79,26 +79,24 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, char *reque
 
 
 int main(int argc, char *argv[]) {
-    const int MAX_CLIENTS = 100, TIMEOUT = 30 * 1000;
-    int sockfd, port, rc;
+    const int TIMEOUT = 30 * 1000;
+    int sockfd, port, rc, numFds = 1, currentClients, endServ = 0;
     struct sockaddr_in server, client;
     time_t currenttime;
     struct tm * timeinfo;
-    struct pollfd fds[MAX_CLIENTS];
+    struct pollfd fds[100];
     char message[512], request[512];
     time ( &currenttime );
     timeinfo = localtime ( &currenttime );
     
+    // Create a socket to recieve incoming connections
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    memset(&server, 0, sizeof(server));
-
-    for(int i = 0; i < MAX_CLIENTS; i++) {
-        fds[i].fd = -1;
-        fds[i].events = POLLIN;
+    if (sockfd < 0) {
+        perror("socket() failed");
+        exit(-1);
     }
-    fds[0].fd = sockfd;
 
-    rc = poll(fds, MAX_CLIENTS, TIMEOUT);
+    memset(&server, 0, sizeof(server));
     
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -110,7 +108,49 @@ int main(int argc, char *argv[]) {
     
     bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));
     socklen_t len = (socklen_t) sizeof(client);    
-    listen(sockfd, 100);
+    rc = listen(sockfd, 100);
+    if(rc < 0) {
+        perror("listen() failed");
+        close(sockfd);
+        exit(-1);
+    }
+
+    memset(fds, 0 , sizeof(fds));
+    /*for(int i = 0; i < MAX_CLIENTS; i++) {
+        fds[i].fd = -1;
+        fds[i].events = POLLIN;
+    }*/
+    fds[0].fd = sockfd;
+    fds[0].events = POLLIN;
+    do {
+        rc = poll(fds, numFds, TIMEOUT);
+        if (rc < 0) {
+            perror("poll() failed");
+            break;
+        }
+        if (rc == 0) {
+            printf("poll() timeout. Ending program.");
+            break;
+        }
+
+        currentClients = numFds;
+        for(int i = 0; i < currentClients; i++) {
+            if(fds[i].revents == 0)
+                continue;
+
+            if(fds[i].revents != POLLIN) {
+                printf("Error! revents = %d\n", fds[i].revents);
+                endServ = 1;
+                break;
+            }
+
+            if(fds[i].fd == sockfd) {
+
+            }
+        }
+        currentClients++;
+    }while(1);
+    
 
     for(;;) {
         //We first have to accept a connection
