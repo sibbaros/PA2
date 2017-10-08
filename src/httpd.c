@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
 
     for(;;) {
         //We first have to accept a connection
-        socklen_t len = (socklen_t) sizeof(client);
+        //socklen_t len = (socklen_t) sizeof(client);
         int connfd = accept(sockfd, (struct sockaddr *) &client, &len);
         
         if(connfd == 0) {
@@ -129,10 +129,12 @@ int main(int argc, char *argv[]) {
             sizeof(clientPort), NI_NUMERICHOST | NI_NUMERICSERV);
         inet_ntop(AF_INET, &clientIP, ipAddr, INET_ADDRSTRLEN);
 
-        ssize_t n = recvfrom(connfd, &message, sizeof(message) - 1, 0, 
+        //ssize_t n = 
+        recvfrom(connfd, &message, sizeof(message) - 1, 0, 
             (struct sockaddr*)&client, &len);
 
-	    int n2 = send(connfd, &html, sizeof(html) - 1, 0);
+	    //int n2 = 
+        send(connfd, &html, sizeof(html) - 1, 0);
 
 
         // need to check the first message and see if it is get, post or head
