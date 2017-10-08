@@ -84,6 +84,7 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
 int main(int argc, char *argv[]) {
     const int TIMEOUT = 30 * 1000;
     int sockfd, port, rc, numFds = 1, currentClients, endServ = 0, newSD, closeConn;
+    char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
     struct sockaddr_in server, client;
     time_t currenttime;
     struct tm * timeinfo;
@@ -138,6 +139,9 @@ int main(int argc, char *argv[]) {
 
         currentClients = numFds;
         for(int i = 0; i < currentClients; i++) {
+            getnameinfo((struct sockaddr *)&client, len, clientIP, sizeof(clientIP), clientPort, 
+                        sizeof(clientPort), NI_NUMERICHOST | NI_NUMERICSERV);
+            inet_ntop(AF_INET, &clientIP, ipAddr, INET_ADDRSTRLEN);
             if(fds[i].revents == 0)
                 continue;
 
@@ -151,7 +155,7 @@ int main(int argc, char *argv[]) {
                 printf("Listening socket reading\n");
             
                 do {
-                    newSD = accept(sockfd, NULL, NULL);
+                    newSD = accept(sockfd,(struct sockaddr *) &client, &len);
                     if(newSD < 0) {
                         if(errno != EWOULDBLOCK) {
                             perror("accept() failed");
@@ -169,7 +173,7 @@ int main(int argc, char *argv[]) {
             else {    // This is for an already existing connection
                 closeConn = 0;
                 do{
-                    char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
+                    
                     char *requestURL;
                     rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
                         (struct sockaddr*)&client, &len);
@@ -186,9 +190,7 @@ int main(int argc, char *argv[]) {
                     }
 
                     // This is if data is recieved
-                    getnameinfo((struct sockaddr *)&client, len, clientIP, sizeof(clientIP), clientPort, 
-                        sizeof(clientPort), NI_NUMERICHOST | NI_NUMERICSERV);
-                    inet_ntop(AF_INET, &clientIP, ipAddr, INET_ADDRSTRLEN);
+                    
 
                     //send(fds[i].fd, &html, sizeof(html) - 1, 0);
 
@@ -230,70 +232,6 @@ int main(int argc, char *argv[]) {
         }
         currentClients++;
     }while(1);
-    
-/*
-    //for(;;) {
-        //We first have to accept a connection
-        //socklen_t len = (socklen_t) sizeof(client);
-        int connfd = accept(sockfd, (struct sockaddr *) &client, &len);
-        
-        //if(connfd == 0) {
-        //    perror("Connection failed...\n");
-        //}
-       
-        //Get all info that we need from the client
-        char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
-        char *requestURL;
-        //struct sockaddr_in * clientSockAddr = (struct sockaddr_in*)&client;
-        //struct in_addr clientIP = clientSockAddr->sin_addr;
-        getnameinfo((struct sockaddr *)&client, len, clientIP, sizeof(clientIP), clientPort, 
-            sizeof(clientPort), NI_NUMERICHOST | NI_NUMERICSERV);
-        inet_ntop(AF_INET, &clientIP, ipAddr, INET_ADDRSTRLEN);
-
-        //ssize_t n = 
-        recvfrom(connfd, &message, sizeof(message) - 1, 0, 
-            (struct sockaddr*)&client, &len);
-
-	    //int n2 = 
-        send(connfd, &html, sizeof(html) - 1, 0);
-
-
-        // need to check the first message and see if it is get, post or head
-        // and then send it to the right function to respond accordingly
-
-        strncpy(request, message, sizeof(request)-1);
-        requestURL = strchr(request, '/');
-        requestURL = strtok(requestURL, " ");
-        char mType[5];
-        memcpy(mType, &message[0], 4);
-        mType[4] = '\0';
-        char rCode[8];
-        strcpy(rCode, "200, OK");
-        
-        if(!(strcmp(mType, "GET "))) {
-            printf("Get request\n");
-            ifGet(html, clientPort, clientIP, requestURL);
-        }
-        else if(!(strcmp(mType, "POST"))) {
-            printf("Post request\n");
-            char data[500];
-            memcpy(data, &message[5], 400);
-            ifPost(html, clientPort, clientIP, data);
-        }
-        else if(!(strcmp(mType, "HEAD"))) {
-            printf("Head request\n");
-            ifHead();
-        }
-        else {
-            printf("ERROR: The requested type is not supported.\n");
-            ifError(html);
-            strncpy(mType, "ERROR", sizeof(mType) -1);
-            strncpy(rCode, "404, ERROR", sizeof(rCode)-1);
-
-        }
-        logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode); // response code
-        send(connfd, &html, sizeof(html) -1, 0);
-    //}*/
     return 0;
 }
 
