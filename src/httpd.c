@@ -1,5 +1,11 @@
+/********************************************************************************/
+/**                                                                            **/
+/** T-409-TSAM-2017: Computer Networks Programming Assignment 2 – httpd Part 1 **/
+/**          By Alexandra Geirsdóttir & Sigurbjörg Rós Sigurðardóttir          **/
+/**                             October 6 2017                                 **/
+/**                                                                            **/
+/********************************************************************************/
 
-/* your code goes here. */
 #include <assert.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -19,7 +25,7 @@ void ifHead() {
 
 }
 
-void ifGet(char *html, char *ipAddr, char *clientPort, char *clientIP) {
+void ifGet(char *html, char *clientPort, char *clientIP) {
     // generates a HTML5 page in memmory ( think it should be in a seperate function)
     // Itsactual content should include the URL of the requested page and the IP address and port number of the requesting client
     // format http://foo.com/page 123.123.123.123:4567
@@ -31,12 +37,10 @@ void ifGet(char *html, char *ipAddr, char *clientPort, char *clientIP) {
     strcat(html, clientIP);
     strcat(html, ":");
     strcat(html, clientPort);
-    strcat(html, "\n        </h1>\n            "
-    "\n        <img src=\"https://http.cat/200\" alt=\"GET REQUEST\">\n    </body>\n</html>\n");
-    printf("inside get function\r\n");
+    strcat(html, "\n        </h1>\n    </body>\n</html>\n");
 }
 
-void ifPost(char *html, char *ipAddr, char *clientPort, char *clientIP, char *data) {
+void ifPost(char *html, char *clientPort, char *clientIP, char *data) {
    // same as get request plus the data in the body of the post request
 
     html[0] = '\0';
@@ -49,25 +53,23 @@ void ifPost(char *html, char *ipAddr, char *clientPort, char *clientIP, char *da
     strcat(html, clientPort);
     strcat(html, "\n        </h1>\n        <p>");
     strcat(html, data);
-    strcat(html, "\n        </p>\n        <img src=\"https://http.cat/201\" alt=\"POST REQUEST\">\n"
-    "    </body>\n</html>\n"); 
+    strcat(html, "\n        </p>\n    </body>\n</html>\n"); 
 }
 
 void ifError(char *html) {
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 404, NOTOK\n"
     "<!DOCTYPE html>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
-    "    </head>\n    <body>\n       <h2>~~OOPS something went wrong~~       </h2>"
-    "            \"        <img src=\"https://http.cat/404\""
-    " alt=\"BAD REQUEST\">\n    </body>\n</html>");
+    "    </head>\n    <body>\n        <h2>\n            ~~OOPS something went wrong~~"
+    "\n        </h2>\n    </body>\n</html>");
 }
 
-void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, char *request) {
+void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, char *request, char *requestURL) {
 
     FILE *f;
 
     f = fopen("./src/file.log", "a" );
-    fprintf(f, "%s : %s:%s  %s \n", asctime (timeinfo), clientIP, clientPort, request);
+    fprintf(f, "%s : %s:%s  %s  %s \n", asctime (timeinfo), clientIP, clientPort, request, requestURL);
     fclose(f);
 }
 
@@ -77,7 +79,7 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in server, client;
     time_t currenttime;
     struct tm * timeinfo;
-    char message[512], request;
+    char message[512], request[512];
 
     time ( &currenttime );
     timeinfo = localtime ( &currenttime );
@@ -109,7 +111,8 @@ int main(int argc, char *argv[]) {
         }
        
         //Get all info that we need from the client
-        char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500], *requestURL;
+        char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
+        char *requestURL;
         //struct sockaddr_in * clientSockAddr = (struct sockaddr_in*)&client;
         //struct in_addr clientIP = clientSockAddr->sin_addr;
         getnameinfo((struct sockaddr *)&client, len, clientIP, sizeof(clientIP), clientPort, 
@@ -129,33 +132,30 @@ int main(int argc, char *argv[]) {
         strncpy(request, message, sizeof(request)-1);
         requestURL = strchr(request, '/');
         requestURL = strtok(requestURL, " ");
-        printf("second : %s\n", requestURL);
-        char mtype[5];
-        memcpy(mtype, &message[0], 4);
-        mtype[4] = '\0';
+        char mType[5];
+        memcpy(mType, &message[0], 4);
+        mType[4] = '\0';
         
-        if(!(strcmp(mtype, "GET "))) {
+        if(!(strcmp(mType, "GET "))) {
             printf("Get request\n");
-            ifGet(html, ipAddr, clientPort, clientIP);
-            logFile(timeinfo, clientIP, clientPort, mtype);//requested URL, response code
+            ifGet(html, clientPort, clientIP);
         }
-        else if(!(strcmp(mtype, "POST"))) {
+        else if(!(strcmp(mType, "POST"))) {
             printf("Post request\n");
             char data[500];
             memcpy(data, &message[5], 400);
-            ifPost(html, ipAddr, clientPort, clientIP, data);
-            logFile(timeinfo, clientIP, clientPort, mtype); //requested URL, response code
+            ifPost(html, clientPort, clientIP, data);
         }
-        else if(!(strcmp(mtype, "HEAD"))) {
+        else if(!(strcmp(mType, "HEAD"))) {
             printf("Head request\n");
             ifHead();
-            logFile(timeinfo, clientIP, clientPort, mtype);//requested URL, response code
         }
         else {
             printf("ERROR: The requested type is not supported.\n");
             ifError(html);
-            logFile(timeinfo, clientIP, clientPort, "ERROR");
+            strncpy(mType, "ERROR", sizeof(mType) -1);
         }
+        logFile(timeinfo, clientIP, clientPort, mType, requestURL); //requested URL, response code
         send(connfd, &html, sizeof(html) -1, 0);
     }
     return 0;
