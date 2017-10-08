@@ -20,6 +20,7 @@
 #include <time.h>
 #include <poll.h>
 #include <unistd.h>
+#include <errno.h>
 
 void ifHead() {
      // returns the header of the page ( doesn't have to be a in it's own function can be) 
@@ -69,18 +70,20 @@ void ifError(char *html) {
     "\n        </h2>\n    </body>\n</html>");
 }
 
-void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, char *request, char *requestURL, char *rCode) {
+void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, 
+             char *request, char *requestURL, char *rCode) {
     FILE *f;
 
     f = fopen("./src/file.log", "a" );
-    fprintf(f, "%s : %s:%s  %s  %s : %s \n", asctime (timeinfo), clientIP, clientPort, request, requestURL, rCode);
+    fprintf(f, "%s : %s:%s  %s  %s : %s \n", asctime (timeinfo), clientIP, 
+            clientPort, request, requestURL, rCode);
     fclose(f);
 }
 
 
 int main(int argc, char *argv[]) {
     const int TIMEOUT = 30 * 1000;
-    int sockfd, port, rc, numFds = 1, currentClients, endServ = 0;
+    int sockfd, port, rc, numFds = 1, currentClients, endServ = 0, newSD, closeConn;
     struct sockaddr_in server, client;
     time_t currenttime;
     struct tm * timeinfo;
@@ -144,22 +147,99 @@ int main(int argc, char *argv[]) {
                 break;
             }
 
-            if(fds[i].fd == sockfd) {
+            if(fds[i].fd == sockfd) {    // This is for a new connection
+                printf("Listening socket reading\n");
+            
+                do {
+                    newSD = accept(sockfd, NULL, NULL);
+                    if(newSD < 0) {
+                        if(errno != EWOULDBLOCK) {
+                            perror("accept() failed");
+                            endServ = 1;
+                        }
+                        break;
+                    }
+                
+                    // Add the new incoming connection to the poll
+                    fds[numFds].fd = newSD;
+                    fds[numFds].events = POLLIN;
+                    numFds++;
+                }while(newSD != -1);
+            }
+            else {    // This is for an already existing connection
+                closeConn = 0;
+                do{
+                    char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
+                    char *requestURL;
+                    rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
+                        (struct sockaddr*)&client, &len);
+                    if(rc < 0) {
+                        if(errno != EWOULDBLOCK) {
+                            closeConn = 1;
+                        }
+                        break;
+                    }
+                    // This is if client closed the connection
+                    if(rc == 0) {
+                        closeConn = 1;
+                        break;
+                    }
 
+                    // This is if data is recieved
+                    getnameinfo((struct sockaddr *)&client, len, clientIP, sizeof(clientIP), clientPort, 
+                        sizeof(clientPort), NI_NUMERICHOST | NI_NUMERICSERV);
+                    inet_ntop(AF_INET, &clientIP, ipAddr, INET_ADDRSTRLEN);
+
+                    //send(fds[i].fd, &html, sizeof(html) - 1, 0);
+
+                    strncpy(request, message, sizeof(request)-1);
+                    requestURL = strchr(request, '/');
+                    requestURL = strtok(requestURL, " ");
+                    char mType[5];
+                    memcpy(mType, &message[0], 4);
+                    mType[4] = '\0';
+                    char rCode[8];
+                    strcpy(rCode, "200, OK");
+                    
+                    if(!(strcmp(mType, "GET "))) {
+                        printf("Get request\n");
+                        ifGet(html, clientPort, clientIP, requestURL);
+                    }
+                    else if(!(strcmp(mType, "POST"))) {
+                        printf("Post request\n");
+                        char data[500];
+                        memcpy(data, &message[5], 400);
+                        ifPost(html, clientPort, clientIP, data);
+                    }
+                    else if(!(strcmp(mType, "HEAD"))) {
+                        printf("Head request\n");
+                        ifHead();
+                    }
+                    else {
+                        printf("ERROR: The requested type is not supported.\n");
+                        ifError(html);
+                        strncpy(mType, "ERROR", sizeof(mType) -1);
+                        strncpy(rCode, "404, ERROR", sizeof(rCode)-1);
+
+                    }
+                    logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode); // response code
+                    send(fds[i].fd, &html, sizeof(html) -1, 0);
+
+                }while(1);
             }
         }
         currentClients++;
     }while(1);
     
-
-    for(;;) {
+/*
+    //for(;;) {
         //We first have to accept a connection
         //socklen_t len = (socklen_t) sizeof(client);
         int connfd = accept(sockfd, (struct sockaddr *) &client, &len);
         
-        if(connfd == 0) {
-            perror("Connection failed...\n");
-        }
+        //if(connfd == 0) {
+        //    perror("Connection failed...\n");
+        //}
        
         //Get all info that we need from the client
         char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
@@ -213,7 +293,7 @@ int main(int argc, char *argv[]) {
         }
         logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode); // response code
         send(connfd, &html, sizeof(html) -1, 0);
-    }
+    //}*/
     return 0;
 }
 
