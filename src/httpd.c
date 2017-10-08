@@ -25,19 +25,20 @@ void ifHead() {
 
 }
 
-void ifGet(char *html, char *clientPort, char *clientIP) {
+void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {
     // generates a HTML5 page in memmory ( think it should be in a seperate function)
     // Itsactual content should include the URL of the requested page and the IP address and port number of the requesting client
     // format http://foo.com/page 123.123.123.123:4567
     html[0] = '\0';
-    strcat(html, "\nHTTP/1.1 200, OK\nContent-type: text/html\n"
-    "\n<!DOCTYPE>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
+    strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
+    "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
     "    </head>\n    <body>\n        <h1>\n");
     strcat(html, "            http://");
     strcat(html, clientIP);
     strcat(html, ":");
     strcat(html, clientPort);
-    strcat(html, "\n        </h1>\n    </body>\n</html>\n");
+    strcat(html, requestURL);
+    strcat(html, "\n        </h1>\n    </body>\n</html>\r\n");
 }
 
 void ifPost(char *html, char *clientPort, char *clientIP, char *data) {
@@ -64,12 +65,12 @@ void ifError(char *html) {
     "\n        </h2>\n    </body>\n</html>");
 }
 
-void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, char *request, char *requestURL) {
+void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, char *request, char *requestURL, char *rCode) {
 
     FILE *f;
 
     f = fopen("./src/file.log", "a" );
-    fprintf(f, "%s : %s:%s  %s  %s \n", asctime (timeinfo), clientIP, clientPort, request, requestURL);
+    fprintf(f, "%s : %s:%s  %s  %s : %s \n", asctime (timeinfo), clientIP, clientPort, request, requestURL, rCode);
     fclose(f);
 }
 
@@ -135,10 +136,15 @@ int main(int argc, char *argv[]) {
         char mType[5];
         memcpy(mType, &message[0], 4);
         mType[4] = '\0';
+        char rCode[8];
+        strcpy(rCode, "200, OK");
+
+        printf("message: %s ",message);
+
         
         if(!(strcmp(mType, "GET "))) {
             printf("Get request\n");
-            ifGet(html, clientPort, clientIP);
+            ifGet(html, clientPort, clientIP, requestURL);
         }
         else if(!(strcmp(mType, "POST"))) {
             printf("Post request\n");
@@ -154,8 +160,10 @@ int main(int argc, char *argv[]) {
             printf("ERROR: The requested type is not supported.\n");
             ifError(html);
             strncpy(mType, "ERROR", sizeof(mType) -1);
+            strncpy(rCode, "404, ERROR", sizeof(rCode)-1);
+
         }
-        logFile(timeinfo, clientIP, clientPort, mType, requestURL); //requested URL, response code
+        logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode); // response code
         send(connfd, &html, sizeof(html) -1, 0);
     }
     return 0;
