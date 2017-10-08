@@ -225,13 +225,23 @@ int main(int argc, char *argv[]) {
 
                     }
                     logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode); // response code
-                    send(fds[i].fd, &html, sizeof(html) -1, 0);
-
+                    rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
+                    if(rc < 0) {
+                        perror("send() failed");
+                        closeConn = 1;
+                        break;
+                    }
                 }
-            
+            currentClients++;
         }
-        currentClients++;
-    }while(1);
+    }while(endServ == 0);
+
+    // Closing all sockets that are open
+    for (int i = 0; i < numFds; i++) {
+        if(fds[i].fd >= 0)
+            close(fds[i].fd);
+    }
+
     return 0;
 }
 
