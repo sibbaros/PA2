@@ -78,7 +78,7 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, char *reque
 
 
 int main(int argc, char *argv[]) {
-    const int MAX_CLIENTS = 100;
+    const int MAX_CLIENTS = 100, TIMEOUT = 30 * 1000;
     int sockfd, port, rc;
     struct sockaddr_in server, client;
     time_t currenttime;
@@ -96,6 +96,8 @@ int main(int argc, char *argv[]) {
         fds[i].events = POLLIN;
     }
     fds[0].fd = sockfd;
+
+    rc = poll(fds, MAX_CLIENTS, TIMEOUT);
     
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
