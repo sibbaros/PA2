@@ -127,31 +127,30 @@ int main(int argc, char *argv[]) {
         // and then send it to the right function and send it the webpage it's asking for 
         //
         printf("%s\n", message);
-        char mtype[6];
-        memcpy(mtype, &message[0], 4);
-        mtype[4] = '\0';
+        char mType[6];
+        memcpy(mType, &message[0], 4);
+        mType[4] = '\0';
         
-        if(!(strcmp(mtype, "GET "))) {
+        if(!(strcmp(mType, "GET "))) {
             printf("Get request\n");
             ifGet(html, clientPort, clientIP);
         }
-        else if(!(strcmp(mtype, "POST"))) {
+        else if(!(strcmp(mType, "POST"))) {
             printf("Post request\n");
             char data[500];
             memcpy(data, &message[5], 400);
             ifPost(html, clientPort, clientIP, data);
         }
-        else if(!(strcmp(mtype, "HEAD"))) {
+        else if(!(strcmp(mType, "HEAD"))) {
             printf("Head request\n");
             ifHead();
         }
         else {
             printf("ERROR: The requested type is not supported.\n");
             ifError(html);
-            strncpy(mtype, "ERROR", sizeof(mtype) -1);
-            
+            strncpy(mType, "ERROR", sizeof(mType) -1);
         }
-        logFile(timeinfo, clientIP, clientPort, mtype); //requested URL, response code
+        logFile(timeinfo, clientIP, clientPort, mType); //requested URL, response code
         send(connfd, &html, sizeof(html) -1, 0);
     }
     return 0;
