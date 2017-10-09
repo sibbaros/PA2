@@ -21,10 +21,6 @@
 #include <poll.h>
 #include <unistd.h>
 #include <errno.h>
-//#include <glib.h>
-
-//#define TRUE 1
-//#define FALSE 0
 
 void ifHead(char * html);
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL);
@@ -46,7 +42,6 @@ int main(int argc, char *argv[]) {
         newSD = 0, closeConn, compressArr = 0;
     char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
     struct sockaddr_in server, client;
-    
     struct pollfd fds[100];
     char message[512];
     
@@ -119,7 +114,7 @@ int main(int argc, char *argv[]) {
         if(compressArr) {
             compress(&compressArr, (struct pollfd*)&fds, &numFds);
         }
-    }while(endServ == 0);
+    } while(endServ == 0);
 
     // Closing all sockets that are open
     closeConnections(fds, numFds);
@@ -135,13 +130,7 @@ void ifHead(char * html) {
 
 }
 
-void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {
-    // generates a HTML5 page in memmory ( think it should be i
-    // n a seperate function). It's actual content should include 
-    // the URL of the requested page and the IP address and port 
-    // number of the requesting client format 
-    // http://foo.com/page 123.123.123.123:4567
-    
+void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {  
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
     "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
@@ -267,7 +256,6 @@ void servConn(int *closeConn, struct pollfd *fds, char *message, struct sockaddr
         strncpy(rCode, "404, ERROR", sizeof(rCode)-1);
         closeConn = (int*) 1;
         return;
-
     }
 
     logFile(timeinfo, clientPort, clientIP, mType, requestURL, rCode); // response code
