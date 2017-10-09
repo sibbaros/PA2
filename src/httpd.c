@@ -32,12 +32,14 @@ void ifPost(char *message, char *html, char *clientPort, char *clientIP);
 void ifError(char *html);
 void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, 
              char *request, char *requestURL, char *rCode);
+void addConn(int *sockfd, const struct sockaddr *client, int newSD, 
+             int *endServ, struct pollfd *fds, int *numFds, socklen_t *len);
 void closeConnections(struct pollfd *fds, int numFds);
 
 int main(int argc, char *argv[]) {
     const int TIMEOUT = 3 * 60 * 1000;
     int sockfd, port, rc, numFds = 1, currentClients, endServ = 0, 
-        newSD, closeConn, compressArr = 0;
+        newSD = 0, closeConn, compressArr = 0;
     char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
     struct sockaddr_in server, client;
     time_t currenttime;
@@ -102,22 +104,7 @@ int main(int argc, char *argv[]) {
 
             // This is for a new connection
             if(fds[i].fd == sockfd) {    
-                printf("Listening socket reading\n");
-                
-                len = (socklen_t) sizeof(client);
-                newSD = accept(sockfd,(struct sockaddr *) &client, &len);
-                if(newSD < 0) {
-                    if(errno != EWOULDBLOCK) {
-                        perror("accept() failed");
-                        endServ = 1;
-                    }
-                    break;
-                }
-                
-                // Add the new incoming connection to the poll
-                fds[numFds].fd = newSD;
-                fds[numFds].events = POLLIN;
-                numFds++;
+                addConn(&sockfd, (struct sockaddr *)&client, newSD, &endServ, (struct pollfd*)&fds, &numFds, &len);
             }
             else {
                 // This is for an already existing connection
@@ -272,6 +259,26 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
     fprintf(f, "%s : %s:%s %s %s : %s\n", asctime (timeinfo), clientIP, 
             clientPort, request, requestURL, rCode);
     fclose(f);
+}
+
+void addConn(int *sockfd, const struct sockaddr *client, int newSD, 
+             int *endServ, struct pollfd *fds, int *numFds, socklen_t *len) {
+    printf("Listening socket reading\n");
+    
+    len = (socklen_t*) sizeof(client);
+    newSD = accept((int) &sockfd, (struct sockaddr *) &client, (socklen_t*) &len);
+    if(newSD < 0) {
+        if(errno != EWOULDBLOCK) {
+            perror("accept() failed");
+            endServ = (int *)1;
+        }
+        return;
+    }
+    
+    // Add the new incoming connection to the poll
+    fds[(int)numFds].fd = (int)newSD;
+    fds[(int)numFds].events = POLLIN;
+    numFds++;
 }
 
 void closeConnections(struct pollfd *fds, int numFds) {
