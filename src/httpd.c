@@ -21,7 +21,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <errno.h>
-#include <glib.h>
+//#include <glib.h>
 
 //#define TRUE 1
 //#define FALSE 0
@@ -83,13 +83,13 @@ void ifError(char *html) {
     "\n        </h2>\n    </body>\n</html>");
 }
 
-void logFile(char *clientPort, char *clientIP, 
+void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, 
              char *request, char *requestURL, char *rCode) {
     FILE *f;
 
     f = fopen("./src/file.log", "a" );
-    char *time = (char*)g_get_real_time();
-    fprintf(f, "%s : %s:%s %s %s : %s\n", time, clientIP, 
+    //char *time = (char*)g_get_real_time();
+    fprintf(f, "%s : %s:%s %s %s : %s\n", asctime (timeinfo), clientIP, 
             clientPort, request, requestURL, rCode);
     fclose(f);
 }
@@ -101,12 +101,12 @@ int main(int argc, char *argv[]) {
         newSD, closeConn, compressArr = 0;
     char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
     struct sockaddr_in server, client;
-    //time_t currenttime;
-    //struct tm * timeinfo;
+    time_t currenttime;
+    struct tm * timeinfo;
     struct pollfd fds[100];
     char message[512], request[512];
-    //time ( &currenttime );
-    //timeinfo = localtime ( &currenttime );
+    time ( &currenttime );
+    timeinfo = localtime ( &currenttime );
     
     // Create a socket to recieve incoming connections
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
                     strncpy(rCode, "404, ERROR", sizeof(rCode)-1);
 
                 }
-                logFile(clientPort, clientIP, mType, requestURL, rCode); // response code
+                logFile(timeinfo, clientPort, clientIP, mType, requestURL, rCode); // response code
                 rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
                 if(rc < 0) {
                     perror("send() failed");
