@@ -164,91 +164,85 @@ int main(int argc, char *argv[]) {
 
             if(fds[i].fd == sockfd) {    // This is for a new connection
                 printf("Listening socket reading\n");
-            
                 
-                    len = (socklen_t) sizeof(client);
-                    newSD = accept(sockfd,(struct sockaddr *) &client, &len);
-                    if(newSD < 0) {
-                        if(errno != EWOULDBLOCK) {
-                            perror("accept() failed");
-                            endServ = TRUE;
-                        }
-                        break;
+                len = (socklen_t) sizeof(client);
+                newSD = accept(sockfd,(struct sockaddr *) &client, &len);
+                if(newSD < 0) {
+                    if(errno != EWOULDBLOCK) {
+                        perror("accept() failed");
+                        endServ = TRUE;
                     }
+                    break;
+                }
                 
-                    // Add the new incoming connection to the poll
-                    fds[numFds].fd = newSD;
-                    fds[numFds].events = POLLIN;
-                    numFds++;
+                // Add the new incoming connection to the poll
+                fds[numFds].fd = newSD;
+                fds[numFds].events = POLLIN;
+                numFds++;
+            }
+            else {
+            // This is for an already existing connection
+                closeConn = 0;    
+                    
+                char *requestURL;
+                rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
+                    (struct sockaddr*)&client, &len);
+                if(rc < 0) {
+                    if(errno != EWOULDBLOCK) {
+                        closeConn = TRUE;
+                    }
+                    break;
+                }
+                // This is if client closed the connection
+                if(rc == 0) {
+                    closeConn = TRUE;
+                    break;
+                }
+
+                // This is if data is recieved
+                strncpy(request, message, sizeof(request)-1);
+                requestURL = strchr(request, '/');
+                requestURL = strtok(requestURL, " ");
+                char mType[5];
+                memcpy(mType, &message[0], 4);
+                mType[4] = '\0';
+                char rCode[8];
+                strcpy(rCode, "200, OK");
+                
+                if(!(strcmp(mType, "GET "))) {
+                    printf("Get request\n");
+                    ifGet(html, clientPort, clientIP, requestURL);
+                }
+                else if(!(strcmp(mType, "POST"))) {
+                    printf("Post request\n");
+                    //memcpy(data, &message[5], 400);
+                    ifPost(message, html, clientPort, clientIP);
+                }
+                else if(!(strcmp(mType, "HEAD"))) {
+                    printf("Head request\n");
+                    ifHead(html);
                 }
                 else {
-                // This is for an already existing connection
-                closeConn = 0;
-                
-                    
-                    char *requestURL;
-                    rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
-                        (struct sockaddr*)&client, &len);
-                    if(rc < 0) {
-                        if(errno != EWOULDBLOCK) {
-                            closeConn = TRUE;
-                        }
-                        break;
-                    }
-                    // This is if client closed the connection
-                    if(rc == 0) {
-                        closeConn = TRUE;
-                        break;
-                    }
+                    printf("ERROR: The requested type is not supported.\n");
+                    ifError(html);
+                    strncpy(mType, "ERROR", sizeof(mType) -1);
+                    strncpy(rCode, "404, ERROR", sizeof(rCode)-1);
 
-                    // This is if data is recieved
-                    
-
-                    //send(fds[i].fd, &html, sizeof(html) - 1, 0);
-
-                    strncpy(request, message, sizeof(request)-1);
-                    requestURL = strchr(request, '/');
-                    requestURL = strtok(requestURL, " ");
-                    char mType[5];
-                    memcpy(mType, &message[0], 4);
-                    mType[4] = '\0';
-                    char rCode[8];
-                    strcpy(rCode, "200, OK");
-                    
-                    if(!(strcmp(mType, "GET "))) {
-                        printf("Get request\n");
-                        ifGet(html, clientPort, clientIP, requestURL);
-                    }
-                    else if(!(strcmp(mType, "POST"))) {
-                        printf("Post request\n");
-                        //memcpy(data, &message[5], 400);
-                        ifPost(message, html, clientPort, clientIP);
-                    }
-                    else if(!(strcmp(mType, "HEAD"))) {
-                        printf("Head request\n");
-                        ifHead(html);
-                    }
-                    else {
-                        printf("ERROR: The requested type is not supported.\n");
-                        ifError(html);
-                        strncpy(mType, "ERROR", sizeof(mType) -1);
-                        strncpy(rCode, "404, ERROR", sizeof(rCode)-1);
-
-                    }
-                    logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode); // response code
-                    rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
-                    if(rc < 0) {
-                        perror("send() failed");
-                        closeConn = TRUE;
-                        break;
-                    }
-
-                    if(closeConn) {
-                        close(fds[i].fd);
-                        fds[i].fd = -1;
-                        compressArr = TRUE;
-                    }
                 }
+                logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode); // response code
+                rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
+                if(rc < 0) {
+                    perror("send() failed");
+                    closeConn = TRUE;
+                    break;
+                }
+
+                if(closeConn) {
+                    close(fds[i].fd);
+                    fds[i].fd = -1;
+                    compressArr = TRUE;
+                }
+            }
         }
 
         if(compressArr) {
