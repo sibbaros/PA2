@@ -25,9 +25,13 @@
 #define TRUE 1
 #define FALSE 0
 
-void ifHead() {
+void ifHead(char * html) {
      // returns the header of the page ( doesn't have to be a in it's own function can be) 
 
+    html[0] = '\0';
+    strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
+    "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
+    "    </head>\n </html>\r\n");
 
 }
 
@@ -221,7 +225,7 @@ int main(int argc, char *argv[]) {
                     }
                     else if(!(strcmp(mType, "HEAD"))) {
                         printf("Head request\n");
-                        ifHead();
+                        ifHead(html);
                     }
                     else {
                         printf("ERROR: The requested type is not supported.\n");
