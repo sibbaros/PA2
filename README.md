@@ -10,7 +10,8 @@ Implemented in C
 
 
 ## Known Bugs
-* We did not use Glib and therefor the format of the log file is not correct
+* We did not use Glib in our implematation
+* The format of the log file is not correct and we know that
 * We did not manage to implement the support for persistent connections
 
 
