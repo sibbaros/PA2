@@ -28,22 +28,21 @@ void ifPost(char *message, char *html, char *clientPort, char *clientIP);
 void ifError(char *html);
 void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, 
              char *request, char *requestURL, char *rCode);
-void addConn(int *sockfd, const struct sockaddr *client, int newSD, 
-             int *endServ, struct pollfd *fds, int *numFds, socklen_t *len);
+void addConn(int *sockfd, const struct sockaddr *client, int newSD, int *endServ, 
+             struct pollfd *fds, int *numFds, socklen_t *len, int *breakFlag);
 void servConn(int *closeConn, struct pollfd *fds, char *message, struct sockaddr *client,
               socklen_t *len, int *rc, char *html, char *clientPort, char *clientIP, int *i,
-              int *compressArr);
+              int *compressArr, int *breakFlag);
 void compress(int *compressArr, struct pollfd *fds, int *numFds);
 void closeConnections(struct pollfd *fds, int numFds);
 
 int main(int argc, char *argv[]) {
     const int TIMEOUT = 3 * 60 * 1000;
     int sockfd, port, rc, numFds = 1, currentClients, endServ = 0, 
-        newSD = 0, closeConn, compressArr = 0;
-    char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
+        newSD = 0, closeConn, compressArr = 0, breakFlag = 0;
+    char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500], message[512];;
     struct sockaddr_in server, client;
     struct pollfd fds[100];
-    char message[512];
     
     // Create a socket to recieve incoming connections
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -100,14 +99,20 @@ int main(int argc, char *argv[]) {
 
             // This is for a new connection
             if(fds[i].fd == sockfd) {    
-                addConn(&sockfd, (struct sockaddr *)&client, newSD, 
-                        &endServ, (struct pollfd*)&fds, &numFds, &len);
+                addConn(&sockfd, (struct sockaddr *)&client, newSD, &endServ, 
+                        (struct pollfd*)&fds, &numFds, &len, &breakFlag);
+                if(breakFlag) {
+                    break;
+                }
             }
             else {
                 // This is for an already existing connection
                 servConn(&closeConn, (struct pollfd *) &fds, (char *) &message, 
                         (struct sockaddr *) &client, &len, &rc, html, (char *) &clientPort, 
-                        (char *) &clientIP, &i, &compressArr);
+                        (char *) &clientIP, &i, &compressArr, &breakFlag);
+                if(breakFlag) {
+                    break;
+                }
             }
         }
 
@@ -134,13 +139,13 @@ void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
     "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
-    "    </head>\n    <body>\n        <h1>\n");
+    "    </head>\n    <body>\n        <h2>\n");
     strcat(html, "            http://");
     strcat(html, clientIP);
     strcat(html, ":");
     strcat(html, clientPort);
     strcat(html, requestURL);
-    strcat(html, "\n        </h1>\n    </body>\n</html>\r\n");
+    strcat(html, "\n        </h2>\n    </body>\n</html>\r\n");
 }
 
 void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
@@ -151,16 +156,15 @@ void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
     dataInfo = strstr(data, "\r\n\r\n");
     printf("%s\n", dataInfo);
 
-
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\nContent-type: text/html\n"
     "\n<!DOCTYPE>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
-    "    </head>\n    <body>\n        <h1>\n");
+    "    </head>\n    <body>\n        <h2>\n");
     strcat(html, "            http://");
     strcat(html, clientIP);
     strcat(html, ":");
     strcat(html, clientPort);
-    strcat(html, "\n        </h1>\n        <p>");
+    strcat(html, "\n        </h2>\n        <p>");
     strcat(html, dataInfo);
     strcat(html, "\n        </p>\n    </body>\n</html>\n"); 
 }
@@ -169,7 +173,7 @@ void ifError(char *html) {
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 404, NOTOK\n"
     "<!DOCTYPE html>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
-    "    </head>\n    <body>\n        <h2>\n            ~~OOPS something went wrong~~"
+    "    </head>\n    <body>\n        <h2>\n            Error: Page not found"
     "\n        </h2>\n    </body>\n</html>");
 }
 
@@ -179,13 +183,15 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
 
     f = fopen("./src/file.log", "a" );
     //char *time = (char*)g_get_real_time();
-    fprintf(f, "%s : %s:%s %s %s : %s\n", asctime (timeinfo), clientIP, 
+    char time[25];
+    strncpy(time, asctime (timeinfo), 23);
+    fprintf(f, "%s : %s:%s %s %s : %s\n", time, clientIP, 
             clientPort, request, requestURL, rCode);
     fclose(f);
 }
 
-void addConn(int *sockfd, const struct sockaddr *client, int newSD, 
-             int *endServ, struct pollfd *fds, int *numFds, socklen_t *len) {
+void addConn(int *sockfd, const struct sockaddr *client, int newSD, int *endServ, 
+             struct pollfd *fds, int *numFds, socklen_t *len, int *breakFlag) {
     printf("Listening socket reading\n");
     
     len = (socklen_t*) sizeof(client);
@@ -195,6 +201,7 @@ void addConn(int *sockfd, const struct sockaddr *client, int newSD,
             perror("accept() failed");
             endServ = (int *)1;
         }
+        breakFlag = (int *)1;
         return;
     }
     
@@ -206,7 +213,7 @@ void addConn(int *sockfd, const struct sockaddr *client, int newSD,
 
 void servConn(int *closeConn, struct pollfd *fds, char *message, struct sockaddr *client,
               socklen_t *len, int *rc, char *html, char *clientPort, char *clientIP, int *i,
-              int *compressArr) {
+              int *compressArr, int *breakFlag) {
     time_t currenttime;
     struct tm * timeinfo;
     char request[512], mType[5], rCode[8], *requestURL;
@@ -220,11 +227,13 @@ void servConn(int *closeConn, struct pollfd *fds, char *message, struct sockaddr
         if(errno != EWOULDBLOCK) {
             closeConn = (int*) 1;
         }
+        breakFlag = (int *)1;
         return;
     }
     // This is if client closed the connection
     if(rc == 0) {
-        closeConn = (int*) 1;
+        closeConn = (int *) 1;
+        breakFlag = (int *)1;
         return;
     }
 
@@ -254,7 +263,8 @@ void servConn(int *closeConn, struct pollfd *fds, char *message, struct sockaddr
         ifError(html);
         strncpy(mType, "ERROR", sizeof(mType) -1);
         strncpy(rCode, "404, ERROR", sizeof(rCode)-1);
-        closeConn = (int*) 1;
+        closeConn = (int *) 1;
+        breakFlag = (int *)1;
         return;
     }
 
@@ -263,7 +273,8 @@ void servConn(int *closeConn, struct pollfd *fds, char *message, struct sockaddr
 
     if(rc < 0) {
         perror("send() failed");
-        closeConn = (int*) 1;
+        closeConn = (int *) 1;
+        breakFlag = (int *)1;
         return;
     }
 
