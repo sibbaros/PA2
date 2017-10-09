@@ -27,8 +27,6 @@
 #define FALSE 0
 
 void ifHead(char * html) {
-    // returns the header of the page ( doesn't have to be a in it's own function can be) 
-
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
     "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
@@ -85,12 +83,12 @@ void ifError(char *html) {
     "\n        </h2>\n    </body>\n</html>");
 }
 
-void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, 
+void logFile(char *clientPort, char *clientIP, 
              char *request, char *requestURL, char *rCode) {
     FILE *f;
 
     f = fopen("./src/file.log", "a" );
-    char *time = g_get_real_time();
+    char time = g_get_real_time();
     fprintf(f, "%s : %s:%s %s %s : %s\n", time, clientIP, 
             clientPort, request, requestURL, rCode);
     fclose(f);
@@ -98,7 +96,7 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
 
 
 int main(int argc, char *argv[]) {
-    const int TIMEOUT = 30 * 1000;
+    const int TIMEOUT = 3 * 60 * 1000;
     int sockfd, port, rc, numFds = 1, currentClients, endServ = FALSE, 
         newSD, closeConn, compressArr = FALSE;
     char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
@@ -230,7 +228,7 @@ int main(int argc, char *argv[]) {
                     strncpy(rCode, "404, ERROR", sizeof(rCode)-1);
 
                 }
-                logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode); // response code
+                logFile(clientIP, clientPort, mType, requestURL, rCode); // response code
                 rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
                 if(rc < 0) {
                     perror("send() failed");
