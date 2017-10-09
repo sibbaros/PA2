@@ -237,10 +237,28 @@ int main(int argc, char *argv[]) {
                         closeConn = TRUE;
                         break;
                     }
+
+                    if(closeConn) {
+                        close(fds[i].fd);
+                        fds[i].fd = -1;
+                        compressArr = TRUE;
+                    }
                 }
-            currentClients++;
         }
-    }while(endServ == 0);
+
+        if(compressArr) {
+            compressArr = FALSE;
+            for(int i = 0; i < numFds; i++) {
+                if(fds[i].fd == -1) {
+                    for(int j = 0; i < numFds; j++) {
+                        fds[i].fd = fds[j+1].fd;
+                    }
+                    numFds--;
+                }
+            }
+        }
+
+    }while(endServ == FALSE);
 
     // Closing all sockets that are open
     for (int i = 0; i < numFds; i++) {
