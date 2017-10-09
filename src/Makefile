@@ -10,10 +10,8 @@ OBJFLAGS = -c
 .DEFAULT: all
 .PHONY: all
 all: 
-    $(CC) $(CFLAGS) httpd.c -o httpd
+	$(CC) $(CFLAGS) httpd.c -o httpd
 
-clean:
-    rm -f *.o
+clean: rm -f *.o
 
-distclean: clean
-    rm -f httpd
+distclean: rm -f httpd
