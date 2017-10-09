@@ -47,13 +47,13 @@ void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {
     strcat(html, "\n        </h1>\n    </body>\n</html>\r\n");
 }
 
-void ifPost(char *html, char *clientPort, char *clientIP) {
+void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
    // same as get request plus the data in the body of the post request
     char data[512];
-    strncpy(data, message, sizeof(data)-1);
-    char *dataInfo;
-    dataInfo = strtok(data, " ");
-    printf("%s\n", dataInfo);
+    // strncpy(data, message, sizeof(data)-1);
+     char *dataInfo;
+    //dataInfo = strchr(data, "\r\n");
+    //printf("%s\n", dataInfo);
 
 
     html[0] = '\0';
@@ -216,8 +216,8 @@ int main(int argc, char *argv[]) {
                     }
                     else if(!(strcmp(mType, "POST"))) {
                         printf("Post request\n");
-                        memcpy(data, &message[5], 400);
-                        ifPost(html, clientPort, clientIP);
+                        //memcpy(data, &message[5], 400);
+                        ifPost(message, html, clientPort, clientIP);
                     }
                     else if(!(strcmp(mType, "HEAD"))) {
                         printf("Head request\n");
