@@ -23,8 +23,8 @@
 #include <errno.h>
 #include <glib.h>
 
-#define TRUE 1
-#define FALSE 0
+//#define TRUE 1
+//#define FALSE 0
 
 void ifHead(char * html) {
     html[0] = '\0';
@@ -97,8 +97,8 @@ void logFile(char *clientPort, char *clientIP,
 
 int main(int argc, char *argv[]) {
     const int TIMEOUT = 3 * 60 * 1000;
-    int sockfd, port, rc, numFds = 1, currentClients, endServ = FALSE, 
-        newSD, closeConn, compressArr = FALSE;
+    int sockfd, port, rc, numFds = 1, currentClients, endServ = 0, 
+        newSD, closeConn, compressArr = 0;
     char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
     struct sockaddr_in server, client;
     //time_t currenttime;
@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
 
             if(fds[i].revents != POLLIN) {
                 printf("Error! revents = %d\n", fds[i].revents);
-                closeConn = TRUE;
+                closeConn = 1;
             }
 
             if(fds[i].fd == sockfd) {    // This is for a new connection
@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
                 if(newSD < 0) {
                     if(errno != EWOULDBLOCK) {
                         perror("accept() failed");
-                        endServ = TRUE;
+                        endServ = 1;
                     }
                     break;
                 }
@@ -188,13 +188,13 @@ int main(int argc, char *argv[]) {
                     (struct sockaddr*)&client, &len);
                 if(rc < 0) {
                     if(errno != EWOULDBLOCK) {
-                        closeConn = TRUE;
+                        closeConn = 1;
                     }
                     break;
                 }
                 // This is if client closed the connection
                 if(rc == 0) {
-                    closeConn = TRUE;
+                    closeConn = 1;
                     break;
                 }
 
@@ -232,20 +232,20 @@ int main(int argc, char *argv[]) {
                 rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
                 if(rc < 0) {
                     perror("send() failed");
-                    closeConn = TRUE;
+                    closeConn = 1;
                     break;
                 }
 
                 if(closeConn) {
                     close(fds[i].fd);
                     fds[i].fd = -1;
-                    compressArr = TRUE;
+                    compressArr = 1;
                 }
             }
         }
 
         if(compressArr) {
-            compressArr = FALSE;
+            compressArr = 0;
             for(int i = 0; i < numFds; i++) {
                 if(fds[i].fd == -1) {
                     for(int j = 0; i < numFds; j++) {
@@ -256,7 +256,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-    }while(endServ == FALSE);
+    }while(endServ == 0);
 
     // Closing all sockets that are open
     for (int i = 0; i < numFds; i++) {
