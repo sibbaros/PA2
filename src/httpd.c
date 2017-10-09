@@ -28,12 +28,7 @@ void ifPost(char *message, char *html, char *clientPort, char *clientIP);
 void ifError(char *html);
 void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, 
              char *request, char *requestURL, char *rCode);
-void addConn(int *sockfd, const struct sockaddr *client, int newSD, int *endServ, 
-             struct pollfd *fds, int *numFds, socklen_t *len, int *breakFlag);
-void servConn(int *closeConn, struct pollfd *fds, char *message, struct sockaddr *client,
-              socklen_t *len, int *rc, char *html, char *clientPort, char *clientIP, int *i,
-              int *compressArr, int *breakFlag);
-void compress(int *compressArr, struct pollfd *fds, int *numFds);
+int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int numFds);
 
 int main(int argc, char *argv[]) {
@@ -44,7 +39,6 @@ int main(int argc, char *argv[]) {
     char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500], message[512];;
     struct sockaddr_in server, client;
     struct pollfd fds[100];
-    char message[512];
 
     // Checks if we have enough arguments
     if(argc < 2) {
@@ -110,25 +104,95 @@ int main(int argc, char *argv[]) {
 
             // This is for a new connection
             if(fds[i].fd == sockfd) {    
-                addConn(&sockfd, (struct sockaddr *)&client, newSD, &endServ, 
-                        (struct pollfd*)&fds, &numFds, &len, &breakFlag);
-                if(breakFlag) {
+                printf("Listening socket reading\n");
+    
+                len = (socklen_t) sizeof(client);
+                newSD = accept(sockfd,(struct sockaddr *) &client, &len);
+                if(newSD < 0) {
+                    if(errno != EWOULDBLOCK) {
+                        perror("accept() failed");
+                        endServ = 1;
+                    }
                     break;
                 }
+                
+                // Add the new incoming connection to the poll
+                fds[numFds].fd = newSD;
+                fds[numFds].events = POLLIN;
+                numFds++;
             }
             else {
                 // This is for an already existing connection
-                servConn(&closeConn, (struct pollfd *) &fds, (char *) &message, 
-                        (struct sockaddr *) &client, &len, &rc, html, (char *) &clientPort, 
-                        (char *) &clientIP, &i, &compressArr, &breakFlag);
-                if(breakFlag) {
+                time_t currenttime;
+                struct tm * timeinfo;
+                char request[512], mType[5], rCode[8], *requestURL;
+                time ( &currenttime );
+                timeinfo = localtime ( &currenttime ); 
+                
+                closeConn = 0;
+                    
+                rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
+                    (struct sockaddr*)&client, &len);
+                if(rc < 0) {
+                    if(errno != EWOULDBLOCK) {
+                        closeConn = 1;
+                    }
                     break;
+                }
+
+                // This is if client closed the connection
+                if(rc == 0) {
+                    closeConn = 1;
+                    break;
+                }
+
+                // This is if data is recieved
+                strncpy(request, message, sizeof(request)-1);
+                requestURL = strchr(request, '/');
+                requestURL = strtok(requestURL, " ");
+                memcpy(mType, &message[0], 4);
+                mType[4] = '\0';
+                strcpy(rCode, "200, OK");
+                
+                if(!(strcmp(mType, "GET "))) {
+                    printf("Get request\n");
+                    ifGet(html, clientPort, clientIP, requestURL);
+                }
+                else if(!(strcmp(mType, "POST"))) {
+                    printf("Post request\n");
+                    ifPost(message, html, clientPort, clientIP);
+                }
+                else if(!(strcmp(mType, "HEAD"))) {
+                    printf("Head request\n");
+                    ifHead(html);
+                }
+                else {
+                    printf("ERROR: The requested type is not supported.\n");
+                    ifError(html);
+                    strncpy(mType, "ERROR", sizeof(mType) -1);
+                    strncpy(rCode, "404, ERROR", sizeof(rCode)-1);
+                }
+
+                logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode);
+                rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
+
+                if(rc < 0) {
+                    perror("send() failed");
+                    closeConn = 1;
+                    breakFlag = 1;
+                    break;
+                }
+
+                if(closeConn) {
+                    close(fds[i].fd);
+                    fds[i].fd = -1;
+                    compressArr = 1;
                 }
             }
         }
 
         if(compressArr) {
-            compress(&compressArr, (struct pollfd*)&fds, &numFds);
+            numFds = compress(&compressArr, (struct pollfd*)&fds, numFds);
         }
     } while(endServ == 0);
 
@@ -200,7 +264,6 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
     f = fopen("./src/file.log", "a" );
 
     // Prints the information in the file.log 
-    //char *time = (char*)g_get_real_time();
     char time[25];
     strncpy(time, asctime (timeinfo), 23);
     fprintf(f, "%s : %s:%s %s %s : %s\n", time, clientIP, 
@@ -208,111 +271,17 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
     fclose(f);
 }
 
-void addConn(int *sockfd, const struct sockaddr *client, int newSD, int *endServ, 
-             struct pollfd *fds, int *numFds, socklen_t *len, int *breakFlag) {
-    printf("Listening socket reading\n");
-    
-    len = (socklen_t*) sizeof(client);
-    newSD = accept((int) &sockfd, (struct sockaddr *) &client, (socklen_t*) &len);
-    if(newSD < 0) {
-        if(errno != EWOULDBLOCK) {
-            perror("accept() failed");
-            endServ = (int *)1;
-        }
-        breakFlag = (int *)1;
-        return;
-    }
-    
-    // Add the new incoming connection to the poll
-    fds[(int)numFds].fd = (int)newSD;
-    fds[(int)numFds].events = POLLIN;
-    numFds++;
-}
-
-void servConn(int *closeConn, struct pollfd *fds, char *message, struct sockaddr *client,
-              socklen_t *len, int *rc, char *html, char *clientPort, char *clientIP, int *i,
-              int *compressArr, int *breakFlag) {
-    time_t currenttime;
-    struct tm * timeinfo;
-    char request[512], mType[5], rCode[8], *requestURL;
-    time ( &currenttime );
-    timeinfo = localtime ( &currenttime );
-    closeConn = 0;    
-                    
-    *rc = recvfrom(fds[(int)i].fd, &message, sizeof(message) - 1, 0, 
-        (struct sockaddr*)&client, (socklen_t*) &len);
-    if(rc < 0) {
-        if(errno != EWOULDBLOCK) {
-            closeConn = (int*) 1;
-        }
-        breakFlag = (int *)1;
-        return;
-    }
-    // This is if client closed the connection
-    if(rc == 0) {
-        closeConn = (int *) 1;
-        breakFlag = (int *)1;
-        return;
-    }
-
-    // This is if data is recieved
-    strncpy(request, message, sizeof(request)-1);
-    requestURL = strchr(request, '/');
-    requestURL = strtok(requestURL, " ");
-    memcpy(mType, &message[0], 4);
-    mType[4] = '\0';
-    strcpy(rCode, "200, OK");
-    
-    if(!(strcmp(mType, "GET "))) {
-        printf("Get request\n");
-        ifGet(html, clientPort, clientIP, requestURL);
-    }
-    else if(!(strcmp(mType, "POST"))) {
-        printf("Post request\n");
-        //memcpy(data, &message[5], 400);
-        ifPost(message, html, clientPort, clientIP);
-    }
-    else if(!(strcmp(mType, "HEAD"))) {
-        printf("Head request\n");
-        ifHead(html);
-    }
-    else {
-        printf("ERROR: The requested type is not supported.\n");
-        ifError(html);
-        strncpy(mType, "ERROR", sizeof(mType) -1);
-        strncpy(rCode, "404, ERROR", sizeof(rCode)-1);
-        closeConn = (int *) 1;
-        breakFlag = (int *)1;
-        return;
-    }
-
-    logFile(timeinfo, clientPort, clientIP, mType, requestURL, rCode); // response code
-    *rc = send(fds[(int)i].fd, &html, sizeof(html) -1, 0);
-
-    if(rc < 0) {
-        perror("send() failed");
-        closeConn = (int *) 1;
-        breakFlag = (int *)1;
-        return;
-    }
-
-    if(closeConn) {
-        close(fds[(int)i].fd);
-        fds[(int)i].fd = -1;
-        compressArr = (int*) 1;
-    }
-}
-
-void compress(int *compressArr, struct pollfd *fds, int *numFds) {
-    compressArr = 0;
-    for(int i = 0; i < (int)numFds; i++) {
+int compress(int *compressArr, struct pollfd *fds, int numFds) {
+    *compressArr = 0;
+    for(int i = 0; i < numFds; i++) {
         if(fds[i].fd == -1) {
-            for(int j = 0; i < (int)numFds; j++) {
+            for(int j = 0; i < numFds; j++) {
                 fds[i].fd = fds[j+1].fd;
             }
             numFds--;
         }
     }
+    return numFds;
 }
 
 void closeConnections(struct pollfd *fds, int numFds) {
