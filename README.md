@@ -28,6 +28,8 @@ To gett started you open the PA2 folder in bash/shell/terminal and run these two
 2.  ./src/httpd "yourPortNumber""
 ```
 
+## Note
+This assignment is worth 10% of the final grade of this course. We put in over 50 hours per person (100 hours in total) of work on this project and are sorry to say that we were not able to finish in time. It is sad to think that most of this work will go unpaid and not resulting in a full grade and is therefore not worth the effort.
 
 ## Authors
 See the AUTHORS file included in the folder
