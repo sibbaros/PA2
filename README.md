@@ -6,6 +6,7 @@ Implemented in C
 * Can handle GET, POST and HEAD requests
 * If anything else is requested it handels it as an error
 * Logs all actions in the file.log file
+* Can handle parallel connections from several clients
 
 
 ## Known Bugs
