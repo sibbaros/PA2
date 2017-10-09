@@ -21,6 +21,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <errno.h>
+#include <glib.h>
 
 #define TRUE 1
 #define FALSE 0
