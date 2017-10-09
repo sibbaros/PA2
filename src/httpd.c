@@ -50,10 +50,10 @@ void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {
 void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
    // same as get request plus the data in the body of the post request
     char data[512];
-    // strncpy(data, message, sizeof(data)-1);
-     char *dataInfo;
-    //dataInfo = strchr(data, "\r\n");
-    //printf("%s\n", dataInfo);
+    strncpy(data, message, sizeof(data)-1);
+    char *dataInfo;
+    dataInfo = strtok(data, "\r\n");
+    printf("%s\n", dataInfo);
 
 
     html[0] = '\0';
