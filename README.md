@@ -6,12 +6,12 @@ Implemented in C
 
 ## Getting started
 To gett started you open the PA2 folder in bash/shell/terminal and run these two easy commands.
-#### 1.
+1.
 ```
  make -C ./src 
 ```
 
-#### 2.
+ 2.
 ```
 ./src/httpd "yourPortNumber""
 ```
