@@ -52,7 +52,7 @@ void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
     char data[512];
     strncpy(data, message, sizeof(data)-1);
     char *dataInfo;
-    dataInfo = strtok(data, "\r\n");
+    dataInfo = strstr(data, "\r\n\r\n");
     printf("%s\n", dataInfo);
 
 
