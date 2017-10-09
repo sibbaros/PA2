@@ -22,6 +22,9 @@
 #include <unistd.h>
 #include <errno.h>
 
+#define TRUE 1
+#define FALSE 0
+
 void ifHead() {
      // returns the header of the page ( doesn't have to be a in it's own function can be) 
 
@@ -83,7 +86,8 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
 
 int main(int argc, char *argv[]) {
     const int TIMEOUT = 30 * 1000;
-    int sockfd, port, rc, numFds = 1, currentClients, endServ = 0, newSD, closeConn;
+    int sockfd, port, rc, numFds = 1, currentClients, endServ = FALSE, 
+        newSD, closeConn, compressArr = FALSE;
     char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
     struct sockaddr_in server, client;
     time_t currenttime;
@@ -119,10 +123,6 @@ int main(int argc, char *argv[]) {
     }
 
     memset(fds, 0 , sizeof(fds));
-    /*for(int i = 0; i < MAX_CLIENTS; i++) {
-        fds[i].fd = -1;
-        fds[i].events = POLLIN;
-    }*/
     fds[0].fd = sockfd;
     fds[0].events = POLLIN;
     do {
@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
 
             if(fds[i].revents != POLLIN) {
                 printf("Error! revents = %d\n", fds[i].revents);
-                closeConn = 1;
+                closeConn = TRUE;
             }
 
             if(fds[i].fd == sockfd) {    // This is for a new connection
@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
                     if(newSD < 0) {
                         if(errno != EWOULDBLOCK) {
                             perror("accept() failed");
-                            endServ = 1;
+                            endServ = TRUE;
                         }
                         break;
                     }
@@ -179,13 +179,13 @@ int main(int argc, char *argv[]) {
                         (struct sockaddr*)&client, &len);
                     if(rc < 0) {
                         if(errno != EWOULDBLOCK) {
-                            closeConn = 1;
+                            closeConn = TRUE;
                         }
                         break;
                     }
                     // This is if client closed the connection
                     if(rc == 0) {
-                        closeConn = 1;
+                        closeConn = TRUE;
                         break;
                     }
 
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
                     rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
                     if(rc < 0) {
                         perror("send() failed");
-                        closeConn = 1;
+                        closeConn = TRUE;
                         break;
                     }
                 }
