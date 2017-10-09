@@ -37,6 +37,7 @@ void compress(int *compressArr, struct pollfd *fds, int *numFds);
 void closeConnections(struct pollfd *fds, int numFds);
 
 int main(int argc, char *argv[]) {
+    // 3 minute timeout window
     const int TIMEOUT = 3 * 60 * 1000;
     int sockfd, port, rc, numFds = 1, currentClients, endServ = 0, 
         newSD = 0, closeConn, compressArr = 0;
@@ -44,8 +45,15 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in server, client;
     struct pollfd fds[100];
     char message[512];
+
+    // Checks if we have enough arguments
+    if(argc < 2) {
+         printf("Error: The server requires a port number.\n");
+         fflush(stdout);
+        return -1;
+    }
     
-    // Create a socket to recieve incoming connections
+    // Create a socket to recieve incoming connections and checking if it works
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("socket() failed");
@@ -63,6 +71,7 @@ int main(int argc, char *argv[]) {
     printf("printing argc: %d\n", argc);
     
     bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));    
+    // Set the listen back log and check if working
     rc = listen(sockfd, 100);
     if(rc < 0) {
         perror("listen() failed");
@@ -70,6 +79,7 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
 
+    // Initializing pollfd struct
     memset(fds, 0 , sizeof(fds));
     fds[0].fd = sockfd;
     fds[0].events = POLLIN;
@@ -122,6 +132,7 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+// Called if a Head request is called
 void ifHead(char * html) {
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
@@ -130,6 +141,7 @@ void ifHead(char * html) {
 
 }
 
+// Called if a Get request is called
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {  
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
@@ -143,6 +155,7 @@ void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {
     strcat(html, "\n        </h1>\n    </body>\n</html>\r\n");
 }
 
+// Called if a Post request is sent
 void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
    // same as get request plus the data in the body of the post request
     char data[512];
@@ -165,6 +178,7 @@ void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
     strcat(html, "\n        </p>\n    </body>\n</html>\n"); 
 }
 
+// Called if an unknown request is called
 void ifError(char *html) {
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 404, NOTOK\n"
@@ -173,12 +187,13 @@ void ifError(char *html) {
     "\n        </h2>\n    </body>\n</html>");
 }
 
+// Logs the information in to file.log
 void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, 
              char *request, char *requestURL, char *rCode) {
     FILE *f;
-
+    // Opens the file or creates it if it does not exist already
     f = fopen("./src/file.log", "a" );
-    //char *time = (char*)g_get_real_time();
+    // Prints the information in the file.log 
     fprintf(f, "%s : %s:%s %s %s : %s\n", asctime (timeinfo), clientIP, 
             clientPort, request, requestURL, rCode);
     fclose(f);
