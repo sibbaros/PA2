@@ -8,8 +8,13 @@ Implemented in C
 * Logs all actions in the file.log file
 
 
+## Known Bugs
+* We did not use Glib and therefor the format of the log file is not correct
+* We did not manage to implement the support for persistent connections
 
-## Getting started
+
+
+## Getting Started
 To gett started you open the PA2 folder in bash/shell/terminal and run these two easy commands.
 
 ```
