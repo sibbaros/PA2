@@ -1,19 +1,19 @@
 CC = gcc
 CPPFLAGS =
-CFLAGS = -std=c11 -D_XOPEN_SOURCE=700 -O2 -Wall -Wextra -Wformat=2
+CFLAGS = -g -std=c11 -D_XOPEN_SOURCE=700 -O2 -Wall -Wextra -Wformat=2 #$(shell pkg-config --cflags   glib-2.0)
+CFLAGS += `pkg-config --cflags --libs glib-2.0`
 LDFLAGS =
 LOADLIBES =
-LDLIBS =
+LDLIBS = #$(shell pkg-config --cflags glib-2.0)#-I/usr/include/glib-2.0 -lglib-2.0
+OBJFLAGS = -c
 
 .DEFAULT: all
 .PHONY: all
-all: httpd
-
-server:
-	$(CC) $(CFLAGS) httpd.c -o httpd
+all: 
+    $(CC) $(CFLAGS) httpd.c -o httpd
 
 clean:
-	rm -f *.o
+    rm -f *.o
 
 distclean: clean
-	rm -f httpd
+    rm -f httpd

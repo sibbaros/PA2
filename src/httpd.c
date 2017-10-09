@@ -21,12 +21,13 @@
 #include <poll.h>
 #include <unistd.h>
 #include <errno.h>
+#include <glib.h>
 
 #define TRUE 1
 #define FALSE 0
 
 void ifHead(char * html) {
-     // returns the header of the page ( doesn't have to be a in it's own function can be) 
+    // returns the header of the page ( doesn't have to be a in it's own function can be) 
 
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
@@ -89,7 +90,8 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
     FILE *f;
 
     f = fopen("./src/file.log", "a" );
-    fprintf(f, "%s : %s:%s  %s  %s : %s \n", asctime (timeinfo), clientIP, 
+    char *time = g_get_real_time();
+    fprintf(f, "%s : %s:%s %s %s : %s\n", time, clientIP, 
             clientPort, request, requestURL, rCode);
     fclose(f);
 }
