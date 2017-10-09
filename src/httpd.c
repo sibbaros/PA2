@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
                     strncpy(rCode, "404, ERROR", sizeof(rCode)-1);
 
                 }
-                logFile(clientIP, clientPort, mType, requestURL, rCode); // response code
+                logFile(clientPort, clientIP, mType, requestURL, rCode); // response code
                 rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
                 if(rc < 0) {
                     perror("send() failed");
