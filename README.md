@@ -3,6 +3,11 @@ Implemented in C
 
 ## Features
 
+* Can handle GET, POST and HEAD requests
+* If anything else is requested it handels it as an error
+* Logs all actions in the file.log file
+
+
 
 ## Getting started
 To gett started you open the PA2 folder in bash/shell/terminal and run these two easy commands.
