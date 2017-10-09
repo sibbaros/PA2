@@ -37,6 +37,7 @@ void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {
     // the URL of the requested page and the IP address and port 
     // number of the requesting client format 
     // http://foo.com/page 123.123.123.123:4567
+    
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
     "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
@@ -49,8 +50,14 @@ void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {
     strcat(html, "\n        </h1>\n    </body>\n</html>\r\n");
 }
 
-void ifPost(char *html, char *clientPort, char *clientIP, char *data) {
+void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
    // same as get request plus the data in the body of the post request
+    char data[512];
+    strncpy(data, message, sizeof(data)-1);
+    char *dataInfo;
+    dataInfo = strstr(data, "\r\n\r\n");
+    printf("%s\n", dataInfo);
+
 
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\nContent-type: text/html\n"
@@ -61,7 +68,7 @@ void ifPost(char *html, char *clientPort, char *clientIP, char *data) {
     strcat(html, ":");
     strcat(html, clientPort);
     strcat(html, "\n        </h1>\n        <p>");
-    strcat(html, data);
+    strcat(html, dataInfo);
     strcat(html, "\n        </p>\n    </body>\n</html>\n"); 
 }
 
@@ -209,9 +216,8 @@ int main(int argc, char *argv[]) {
                     }
                     else if(!(strcmp(mType, "POST"))) {
                         printf("Post request\n");
-                        char data[500];
-                        memcpy(data, &message[5], 400);
-                        ifPost(html, clientPort, clientIP, data);
+                        //memcpy(data, &message[5], 400);
+                        ifPost(message, html, clientPort, clientIP);
                     }
                     else if(!(strcmp(mType, "HEAD"))) {
                         printf("Head request\n");
