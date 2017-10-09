@@ -1,4 +1,4 @@
-#Read-Only Hypertext Transfer protocol (Http)
+# Read-Only Hypertext Transfer protocol (Http)
 Implemented in C
 
 ## Features
@@ -7,7 +7,7 @@ Implemented in C
 ## Getting started
 
 
-##Authous
+## Authors
 
 
 
