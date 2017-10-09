@@ -101,12 +101,12 @@ int main(int argc, char *argv[]) {
         newSD, closeConn, compressArr = FALSE;
     char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500];
     struct sockaddr_in server, client;
-    time_t currenttime;
-    struct tm * timeinfo;
+    //time_t currenttime;
+    //struct tm * timeinfo;
     struct pollfd fds[100];
     char message[512], request[512];
-    time ( &currenttime );
-    timeinfo = localtime ( &currenttime );
+    //time ( &currenttime );
+    //timeinfo = localtime ( &currenttime );
     
     // Create a socket to recieve incoming connections
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
