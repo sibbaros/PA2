@@ -88,7 +88,7 @@ void logFile(char *clientPort, char *clientIP,
     FILE *f;
 
     f = fopen("./src/file.log", "a" );
-    char *time = g_get_real_time();
+    char *time = (char)g_get_real_time();
     fprintf(f, "%s : %s:%s %s %s : %s\n", time, clientIP, 
             clientPort, request, requestURL, rCode);
     fclose(f);
