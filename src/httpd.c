@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     // 3 minute timeout window
     const int TIMEOUT = 3 * 60 * 1000;
     int sockfd, port, rc, numFds = 1, currentClients, endServ = 0, 
-        newSD = 0, closeConn, compressArr = 0, breakFlag = 0;
+        newSD = 0, closeConn, compressArr = 0;
     char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500], message[512];;
     struct sockaddr_in server, client;
     struct pollfd fds[100];
