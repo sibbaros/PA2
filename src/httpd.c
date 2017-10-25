@@ -21,6 +21,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <errno.h>
+#include<glib.h>
 
 void ifHead(char * html);
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL);
