@@ -181,7 +181,6 @@ int main(int argc, char *argv[]) {
                 if(rc < 0) {
                     perror("send() failed");
                     closeConn = 1;
-                    breakFlag = 1;
                     break;
                 }
 
