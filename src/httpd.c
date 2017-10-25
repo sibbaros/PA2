@@ -21,7 +21,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <errno.h>
-#include<glib.h>
+//#include <glib.h>
 
 void ifHead(char * html);
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL);
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
     char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500], message[512];;
     struct sockaddr_in server, client;
     struct pollfd fds[100];
-    char *htmlp = html[0];
+    //char *htmlp = html[0];
 
     // Checks if we have enough arguments
     if(argc < 2) {
