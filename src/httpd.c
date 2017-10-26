@@ -21,7 +21,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <errno.h>
-//#include <glib.h>
+#include <glib.h>
 
 void ifHead(char *html);
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL);
@@ -83,25 +83,35 @@ int main(int argc, char *argv[]) {
     do {
         socklen_t len = (socklen_t) sizeof(client);
         rc = poll(fds, numFds, TIMEOUT);
+        currentClients = numFds;
         if (rc < 0) {
             perror("poll() failed");
             break;
         }
         if (rc == 0) {
-            printf("poll() timeout. Ending program.");
-            break;
+            printf("poll() timeout. d");
+
+            for (int i = 0; i < currentClients; i++) {
+                close(fds[i].fd);
+                fds[i].fd = -1;
+                compressArr = 1;
+            }
+            // ekki breaka, heldur loka öllum tengingum
         }
 
-        currentClients = numFds;
         for(int i = 0; i < currentClients; i++) {
-            getnameinfo((struct sockaddr *)&client, len, clientIP, sizeof(clientIP), 
-                        clientPort, sizeof(clientPort), NI_NUMERICHOST | NI_NUMERICSERV);
+
+            getnameinfo((struct sockaddr *)&client, 
+                         len, clientIP, sizeof(clientIP), 
+                         clientPort, sizeof(clientPort), NI_NUMERICHOST | NI_NUMERICSERV);
+
+
             inet_ntop(AF_INET, &clientIP, ipAddr, INET_ADDRSTRLEN);
             if(fds[i].revents == 0)
                 continue;
 
             if(fds[i].revents != POLLIN) {
-                printf("Error! revents = %d\n", fds[i].revents);
+                //printf("Error! revents = %d\n and", fds[i].revents);// POLLIN = %d\n", fds[i].revents, POLLIN);
                 closeConn = 1;
             }
 
@@ -115,7 +125,9 @@ int main(int argc, char *argv[]) {
                 fds[numFds].events = POLLIN;
                 numFds++;
             }
+
             else {
+
                 printf("Inside elseeeee\n");
                 // This is for an already existing connection
                 time_t currenttime;
@@ -125,9 +137,12 @@ int main(int argc, char *argv[]) {
                 timeinfo = localtime ( &currenttime ); 
                 
                 closeConn = 0;
-                    
+                
+                //todo check if fds[i].revents is set. (nonzero)
+
                 rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
                     (struct sockaddr*)&client, &len);
+
                 if(rc < 0) {
                     if(errno != EWOULDBLOCK) {
                         closeConn = 1;
@@ -164,18 +179,23 @@ int main(int argc, char *argv[]) {
                 else {
                     printf("%s requests are unsupported by the server.\n", mType);
                     ifError(html);
-                    strncpy(mType, "SERR", sizeof(mType) -1);
+                    // strncpy(mType, "SERR", sizeof(mType) -1);
                     strncpy(rCode, "Unsupported Request", sizeof(rCode)-1);
+                    printf("Does anything happen here? \n");
                 }
 
+                printf("about to send \n");
                 logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode);
                 rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
+                printf("sent\n");
 
                 if(rc < 0) {
                     perror("send() failed");
                     closeConn = 1;
                     break;
                 }
+
+                printf("closing conn \n");
 
                 if(closeConn) {
                     close(fds[i].fd);
@@ -199,16 +219,17 @@ int main(int argc, char *argv[]) {
 }
 
 // Called if a Head request is called
-void ifHead(char * html) {
+void ifHead(char *html) {
     html[0] = '\0';
-    strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
+    strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n" //Connection: keep-alive //Content length  lengdin af html skránni
     "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
     "    </head>\n </html>\r\n");
 
 }
 
 // Called if a Get request is called
-void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {  
+void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) { 
+
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
     "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
@@ -219,6 +240,7 @@ void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {
     strcat(html, clientPort);
     strcat(html, requestURL);
     strcat(html, "\n        </h2>\n    </body>\n</html>\r\n");
+
 }
 
 // Called if a Post request is sent
