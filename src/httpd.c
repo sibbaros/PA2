@@ -23,20 +23,22 @@
 #include <errno.h>
 //#include <glib.h>
 
-void ifHead(char * html);
+void ifHead(char *html);
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL);
 void ifPost(char *message, char *html, char *clientPort, char *clientIP);
 void ifError(char *html);
 void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, 
-             char *request, char *requestURL, char *rCode);
+    char *request, char *requestURL, char *rCode);
 int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int numFds);
+void addConn(socklen_t len, struct sockaddr_in client, int *sockfd, 
+    int *newSD, int *endServ, int *breakFlag/*, struct pollfd *fds, int *numFds*/);
 
 int main(int argc, char *argv[]) {
     // 3 minute timeout window
     const int TIMEOUT = 3 * 60 * 1000;
     int sockfd, port, rc, numFds = 1, currentClients, endServ = 0, 
-        newSD = 0, closeConn, compressArr = 0;
+        newSD = 0, closeConn, compressArr = 0, breakFlag = 0;
     char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500], message[512];;
     struct sockaddr_in server, client;
     struct pollfd fds[100];
@@ -106,27 +108,20 @@ int main(int argc, char *argv[]) {
 
             // This is for a new connection
             if(fds[i].fd == sockfd) {    
-                printf("Listening socket reading\n");
-    
-                len = (socklen_t) sizeof(client);
-                newSD = accept(sockfd,(struct sockaddr *) &client, &len);
-                if(newSD < 0) {
-                    if(errno != EWOULDBLOCK) {
-                        perror("accept() failed");
-                        endServ = 1;
-                    }
+                addConn(len, client, &sockfd, &newSD, &endServ, &breakFlag/*, fds, &numFds*/);
+                if(breakFlag)
                     break;
-                }
-                
                 // Add the new incoming connection to the poll
                 fds[numFds].fd = newSD;
                 fds[numFds].events = POLLIN;
                 numFds++;
+                printf("555555555\n");
             }
             else {
+                printf("Inside elseeeee\n");
                 // This is for an already existing connection
                 time_t currenttime;
-                struct tm * timeinfo;
+                struct tm *timeinfo;
                 char request[512], mType[5], rCode[8], *requestURL;
                 time ( &currenttime );
                 timeinfo = localtime ( &currenttime ); 
@@ -189,6 +184,8 @@ int main(int argc, char *argv[]) {
                     fds[i].fd = -1;
                     compressArr = 1;
                 }
+                if(breakFlag)
+                    break;
             }
         }
 
@@ -290,4 +287,28 @@ void closeConnections(struct pollfd *fds, int numFds) {
         if(fds[i].fd >= 0)
             close(fds[i].fd);
     }
+}
+
+void addConn(socklen_t len, struct sockaddr_in client, int *sockfd, int *newSD, 
+    int *endServ, int *breakFlag/*, struct pollfd *fds, int *numFds*/) {
+    printf("Listening socket reading\n");
+    fflush(stdout);
+
+    len = (socklen_t) sizeof(client);
+    *newSD = accept(*sockfd,(struct sockaddr *) &client, &len);
+
+    if(*newSD < 0) {
+        if(errno != EWOULDBLOCK) {
+            perror("accept() failed");
+            *endServ = 1;
+            *breakFlag = 1;
+        }
+        return;
+    }/*
+    // Add the new incoming connection to the poll
+    printf("Inside heeerrrrrrrr\n");
+    fds[*numFds].fd = *newSD;
+    fds[*numFds].events = POLLIN;
+    numFds++;
+    printf("Inside 444444\n");*/
 }
