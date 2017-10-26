@@ -169,10 +169,10 @@ int main(int argc, char *argv[]) {
                     ifHead(html);
                 }
                 else {
-                    printf("ERROR: The requested type is not supported.\n");
+                    printf("%s requests are unsupported by the server.\n", mType);
                     ifError(html);
-                    strncpy(mType, "ERROR", sizeof(mType) -1);
-                    strncpy(rCode, "404, ERROR", sizeof(rCode)-1);
+                    strncpy(mType, "SERR", sizeof(mType) -1);
+                    strncpy(rCode, "Unsupported Request", sizeof(rCode)-1);
                 }
 
                 logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode);
@@ -251,9 +251,9 @@ void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
 // Called if an unknown request is called
 void ifError(char *html) {
     html[0] = '\0';
-    strcat(html, "\nHTTP/1.1 404, NOTOK\n"
+    strcat(html, "\nHTTP/1.1 501, NOTOK\n"
     "<!DOCTYPE html>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
-    "    </head>\n    <body>\n        <h2>\n            Error: Page not found"
+    "    </head>\n    <body>\n        <h2>\n            Error: Not Implemented"
     "\n        </h2>\n    </body>\n</html>");
 }
 
