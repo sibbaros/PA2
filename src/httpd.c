@@ -32,7 +32,7 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
 int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int numFds);
 void addConn(socklen_t len, struct sockaddr_in client, int *sockfd, 
-    int *newSD, int *endServ, int *breakFlag/*, struct pollfd *fds, int *numFds*/);
+    int *newSD, int *endServ, int *breakFlag);
 
 int main(int argc, char *argv[]) {
     // 3 minute timeout window
@@ -42,7 +42,6 @@ int main(int argc, char *argv[]) {
     char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500], message[512];;
     struct sockaddr_in server, client;
     struct pollfd fds[100];
-    //char *htmlp = html[0];
 
     // Checks if we have enough arguments
     if(argc < 2) {
@@ -108,14 +107,13 @@ int main(int argc, char *argv[]) {
 
             // This is for a new connection
             if(fds[i].fd == sockfd) {    
-                addConn(len, client, &sockfd, &newSD, &endServ, &breakFlag/*, fds, &numFds*/);
+                addConn(len, client, &sockfd, &newSD, &endServ, &breakFlag);
                 if(breakFlag)
                     break;
                 // Add the new incoming connection to the poll
                 fds[numFds].fd = newSD;
                 fds[numFds].events = POLLIN;
                 numFds++;
-                printf("555555555\n");
             }
             else {
                 printf("Inside elseeeee\n");
@@ -290,7 +288,7 @@ void closeConnections(struct pollfd *fds, int numFds) {
 }
 
 void addConn(socklen_t len, struct sockaddr_in client, int *sockfd, int *newSD, 
-    int *endServ, int *breakFlag/*, struct pollfd *fds, int *numFds*/) {
+    int *endServ, int *breakFlag) {
     printf("Listening socket reading\n");
     fflush(stdout);
 
@@ -304,11 +302,5 @@ void addConn(socklen_t len, struct sockaddr_in client, int *sockfd, int *newSD,
             *breakFlag = 1;
         }
         return;
-    }/*
-    // Add the new incoming connection to the poll
-    printf("Inside heeerrrrrrrr\n");
-    fds[*numFds].fd = *newSD;
-    fds[*numFds].events = POLLIN;
-    numFds++;
-    printf("Inside 444444\n");*/
+    }
 }
