@@ -276,10 +276,17 @@ void loopdidoop(int sockfd) {
     fds[0].fd = sockfd;
     fds[0].events = POLLIN;
     while(TRUE) {
-
+        printf("in loop - while\n");
+        fflush(stdout);
         socklen_t len = (socklen_t) sizeof(client);
+        printf("I crash here\n");
+        printf("fds : %lu, numFds : %d \n", sizeof(fds), numFds );
         rc = poll(fds, numFds, TIMEOUT);
+        printf("fds : %lu, numFds : %d, rc : %d \n", sizeof(fds), numFds, rc);
+        printf("I made it to here\n");
         currentClients = numFds;
+        printf("rc : %i\n", rc );
+        fflush(stdout);
         if (rc < 0) {
             perror("poll() failed");
             break;
@@ -295,6 +302,8 @@ void loopdidoop(int sockfd) {
         }
 
         for(int i = 0; i < currentClients; i++) {
+            printf("in loop - for\n");
+            fflush(stdout);
             if(fds[i].revents == 0)
                 continue;
 
@@ -303,8 +312,11 @@ void loopdidoop(int sockfd) {
                 closeConn = 1;
             }
 
+            printf("fds[i].fd : %i and sockfd : %i \n", fds[i].fd, sockfd);
             // This is for a new connection
-            if(fds[i].fd == sockfd) {   
+            if(fds[i].fd == sockfd) { 
+                printf("in loop - for - if\n");
+                fflush(stdout);  
                 if(fds[i].revents & POLLIN) {
                     int connFd = accept(sockfd, (struct sockaddr *) &client, &len);
                     if(connFd < 0) 
