@@ -25,23 +25,28 @@
 #include <glib.h>
 
 typedef enum httpMeth {GET, HEAD, POST, UNKNOWN} httpMeth;
-const char * const https[] = {"GET", "HEAD", "POST", "UNKNOWN"};
+const char *const https[] = {"GET", "HEAD", "POST", "UNKNOWN"};
 
 //**  Structs  **//
 typedef struct ClientCon {
     int conn_fd;
     GTimer *conn_timer;
-    struct sockaddr_in client_sockaddr;
+    struct sockaddr_in clientSockaddr;
 }ClientCon;
 typedef struct Request {
     httpMeth method;
     GString *host;
     GString *path;
-    GString *message_body;
-    bool connection_close;
+    GString *mBody;
+    bool closeCon;
     //GHashTable* headers;
 }Request;
 
+int getArguments(int argc, char* argv[]);
+int checkSocket();
+int checkBind(int sockfd, struct sockaddr_in server);
+int checkListen(int sockfd);
+void reqInit(Request *r);
 void ifHead(char *html);
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL);
 void ifPost(char *message, char *html, char *clientPort, char *clientIP);
@@ -50,55 +55,201 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
     char *request, char *requestURL, char *rCode);
 int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int numFds);
-void addConn(socklen_t len, struct sockaddr_in client, int *sockfd, 
-    int *newSD, int *endServ, int *breakFlag);
+void addConn(int connFd);
+void loopdidoop(int sockfd);
 
-int main(int argc, char *argv[]) {
-    //**  30 second timeout window  **//
-    const int TIMEOUT = 30 * 1000;
-    int sockfd, port, rc, numFds = 1, currentClients, endServ = 0, 
-        newSD = 0, closeConn, compressArr = 0, breakFlag = 0;
-    char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500], message[512];;
-    struct sockaddr_in server, client;
-    struct pollfd fds[100];
+int main(int argc, char *argv[]) {  
+    int sockfd = 0, port = 0, rc = 0;
+    struct sockaddr_in server;
 
     //**  Checks if we have enough arguments  **//
-    if(argc < 2) {
-         printf("Error: The server requires a port number.\n");
-         fflush(stdout);
-        return -1;
-    }
+    port = getArguments(argc, argv);
+    //**  Create a socket to recieve incoming connections  **//
+    sockfd = checkSocket();
+    //**  Setting values  **//
+    memset(&server, 0, sizeof(server));
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = htonl(INADDR_ANY);
+    server.sin_port = htons(port);
+    printf("Connection with port: %d\n", port);
     
-    // Create a socket to recieve incoming connections and checking if it works
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    //**  Check Binding  **//
+    rc = checkBind(sockfd, server);
+    //**  Set the listen back log and check if working  **//
+    rc = checkListen(sockfd);
+    printf("Listening socket reading\n");
+    fflush(stdout);
+
+    loopdidoop(sockfd);
+
+    return 0;
+}
+
+int getArguments(int argc, char* argv[]) {
+    if(argc < 2) {
+        printf("Error: The server requires a port number.\n");
+        fflush(stdout);
+        exit(-1);
+    }
+    return atoi(argv[1]);
+}
+
+int checkSocket() {
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("socket() failed");
         exit(-1);
     }
+    return sockfd;
+}
 
-    memset(&server, 0, sizeof(server));
-    
-    server.sin_family = AF_INET;
-    server.sin_addr.s_addr = htonl(INADDR_ANY);
-    
-    port = atoi(argv[1]);
-    server.sin_port = htons(port);
-    printf("Connection with port: %d\n", port);
-    
-    bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));    
-    // Set the listen back log and check if working
-    rc = listen(sockfd, 100);
+int checkBind(int sockfd, struct sockaddr_in server) {
+    int rc = bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server)); 
     if(rc < 0) {
-        perror("listen() failed");
+        perror("bind() failed\n");
+        exit(-1);
+    }   
+    return rc;
+}
+
+int checkListen(int sockfd) {
+    int rc = listen(sockfd, 100);
+    if(rc < 0) {
+        perror("listen() failed\n");
         close(sockfd);
         exit(-1);
     }
+    return rc;
+}
 
-    // Initializing pollfd struct
+//**  Initializer  **//
+void reqInit(Request *r) {
+    r->host = g_string_new(NULL);
+    r->path = g_string_new(NULL);
+    r->mBody = g_string_new(NULL);
+    r->closeCon = false;
+    r->method = UNKNOWN;
+}    
+
+// Called if a Head request is called
+void ifHead(char *html) {
+    html[0] = '\0';
+    strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n" //Connection: keep-alive //Content length  lengdin af html skránni
+    "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
+    "    </head>\n </html>\r\n");
+
+}
+
+// Called if a Get request is called
+void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) { 
+
+    html[0] = '\0';
+    strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
+    "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
+    "    </head>\n    <body>\n        <h2>\n");
+    strcat(html, "            http://");
+    strcat(html, clientIP);
+    strcat(html, ":");
+    strcat(html, clientPort);
+    strcat(html, requestURL);
+    strcat(html, "\n        </h2>\n    </body>\n</html>\r\n");
+
+}
+
+// Called if a Post request is sent
+void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
+   // same as get request plus the data in the body of the post request
+    char data[512];
+    strncpy(data, message, sizeof(data)-1);
+    char *dataInfo;
+    dataInfo = strstr(data, "\r\n\r\n");
+    printf("%s\n", dataInfo);
+
+    html[0] = '\0';
+    strcat(html, "\nHTTP/1.1 200, OK\nContent-type: text/html\n"
+    "\n<!DOCTYPE>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
+    "    </head>\n    <body>\n        <h2>\n");
+    strcat(html, "            http://");
+    strcat(html, clientIP);
+    strcat(html, ":");
+    strcat(html, clientPort);
+    strcat(html, "\n        </h2>\n        <p>");
+    strcat(html, dataInfo);
+    strcat(html, "\n        </p>\n    </body>\n</html>\n"); 
+}
+
+// Called if an unknown request is called
+void ifError(char *html) {
+    html[0] = '\0';
+    strcat(html, "\nHTTP/1.1 501, NOTOK\n"
+    "<!DOCTYPE html>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
+    "    </head>\n    <body>\n        <h2>\n            Error: Not Implemented"
+    "\n        </h2>\n    </body>\n</html>");
+}
+
+// Logs the information in to file.log
+void logFile(struct tm *timeinfo, char *clientPort, char *clientIP, 
+             char *request, char *requestURL, char *rCode) {
+    FILE *f;
+    // Opens the file or creates it if it does not exist already
+    f = fopen("./src/file.log", "a" );
+
+    if (f == NULL) {
+        perror("Opening log file failure\n");
+        return exit(-1);
+    }
+
+    // Prints the information in the file.log 
+    char time[25];
+    strncpy(time, asctime (timeinfo), 23);
+    fprintf(f, "%s : %s:%s %s %s : %s\n", time, clientIP, 
+            clientPort, request, requestURL, rCode);
+    fclose(f);
+}
+
+int compress(int *compressArr, struct pollfd *fds, int numFds) {
+    *compressArr = 0;
+    for(int i = 0; i < numFds; i++) {
+        if(fds[i].fd == -1) {
+            for(int j = 0; i < numFds; j++) {
+                fds[i].fd = fds[j+1].fd;
+            }
+            numFds--;
+        }
+    }
+    return numFds;
+}
+
+void closeConnections(struct pollfd *fds, int numFds) {
+    for (int i = 0; i < numFds; i++) {
+        if(fds[i].fd >= 0)
+            close(fds[i].fd);
+    }
+}
+
+void addConn(int connFd) {
+    ClientCon *cc = g_new0(ClientCon, 1);
+    int addrlen = sizeof(cc->clientSockaddr);
+    getpeername(connFd, (struct sockaddr*)&(cc->clientSockaddr), (socklen_t*)&addrlen);
+
+    cc->conn_fd = connFd;
+    cc->conn_timer = g_timer_new();
+}
+
+void loopdidoop(int sockfd) {
+    //**  30 second timeout window  **//
+    const int TIMEOUT = 30 * 1000;
+    int rc = 0, numFds = 1, currentClients = 0, 
+        newSD = 0, closeConn = 0, compressArr = 0;
+    char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500], message[512];;
+    struct sockaddr_in client;
+    struct pollfd fds[100];
+
+    //**  Initializing pollfd struct  **//
     memset(fds, 0 , sizeof(fds));
     fds[0].fd = sockfd;
     fds[0].events = POLLIN;
-    do {
+    while(TRUE) {
         socklen_t len = (socklen_t) sizeof(client);
         rc = poll(fds, numFds, TIMEOUT);
         currentClients = numFds;
@@ -115,6 +266,11 @@ int main(int argc, char *argv[]) {
                 compressArr = 1;
             }
         }
+
+        int connFd = accept(sockfd, (struct sockaddr *) &client, &len);
+        if(connFd < 0) 
+            if(errno != EWOULDBLOCK) 
+                perror("accept() failed");
 
         for(int i = 0; i < currentClients; i++) {
 
@@ -134,9 +290,8 @@ int main(int argc, char *argv[]) {
 
             // This is for a new connection
             if(fds[i].fd == sockfd) {    
-                addConn(len, client, &sockfd, &newSD, &endServ, &breakFlag);
-                if(breakFlag)
-                    break;
+                addConn(/*len, client, &sockfd, &newSD, */connFd);
+
                 // Add the new incoming connection to the poll
                 fds[numFds].fd = newSD;
                 fds[numFds].events = POLLIN;
@@ -219,132 +374,14 @@ int main(int argc, char *argv[]) {
                     fds[i].fd = -1;
                     compressArr = 1;
                 }
-                if(breakFlag)
-                    break;
             }
         }
 
         if(compressArr) {
             numFds = compress(&compressArr, (struct pollfd*)&fds, numFds);
         }
-    } while(endServ == 0);
+    }
 
     // Closing all sockets that are open
     closeConnections(fds, numFds);
-
-    return 0;
-}
-
-// Called if a Head request is called
-void ifHead(char *html) {
-    html[0] = '\0';
-    strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n" //Connection: keep-alive //Content length  lengdin af html skránni
-    "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
-    "    </head>\n </html>\r\n");
-
-}
-
-// Called if a Get request is called
-void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) { 
-
-    html[0] = '\0';
-    strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
-    "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
-    "    </head>\n    <body>\n        <h2>\n");
-    strcat(html, "            http://");
-    strcat(html, clientIP);
-    strcat(html, ":");
-    strcat(html, clientPort);
-    strcat(html, requestURL);
-    strcat(html, "\n        </h2>\n    </body>\n</html>\r\n");
-
-}
-
-// Called if a Post request is sent
-void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
-   // same as get request plus the data in the body of the post request
-    char data[512];
-    strncpy(data, message, sizeof(data)-1);
-    char *dataInfo;
-    dataInfo = strstr(data, "\r\n\r\n");
-    printf("%s\n", dataInfo);
-
-    html[0] = '\0';
-    strcat(html, "\nHTTP/1.1 200, OK\nContent-type: text/html\n"
-    "\n<!DOCTYPE>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
-    "    </head>\n    <body>\n        <h2>\n");
-    strcat(html, "            http://");
-    strcat(html, clientIP);
-    strcat(html, ":");
-    strcat(html, clientPort);
-    strcat(html, "\n        </h2>\n        <p>");
-    strcat(html, dataInfo);
-    strcat(html, "\n        </p>\n    </body>\n</html>\n"); 
-}
-
-// Called if an unknown request is called
-void ifError(char *html) {
-    html[0] = '\0';
-    strcat(html, "\nHTTP/1.1 501, NOTOK\n"
-    "<!DOCTYPE html>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
-    "    </head>\n    <body>\n        <h2>\n            Error: Not Implemented"
-    "\n        </h2>\n    </body>\n</html>");
-}
-
-// Logs the information in to file.log
-void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, 
-             char *request, char *requestURL, char *rCode) {
-    FILE *f;
-    // Opens the file or creates it if it does not exist already
-    f = fopen("./src/file.log", "a" );
-
-    if (f == NULL) {
-        perror("Opening log file failure\n");
-        return exit(-1);
-    }
-
-    // Prints the information in the file.log 
-    char time[25];
-    strncpy(time, asctime (timeinfo), 23);
-    fprintf(f, "%s : %s:%s %s %s : %s\n", time, clientIP, 
-            clientPort, request, requestURL, rCode);
-    fclose(f);
-}
-
-int compress(int *compressArr, struct pollfd *fds, int numFds) {
-    *compressArr = 0;
-    for(int i = 0; i < numFds; i++) {
-        if(fds[i].fd == -1) {
-            for(int j = 0; i < numFds; j++) {
-                fds[i].fd = fds[j+1].fd;
-            }
-            numFds--;
-        }
-    }
-    return numFds;
-}
-
-void closeConnections(struct pollfd *fds, int numFds) {
-    for (int i = 0; i < numFds; i++) {
-        if(fds[i].fd >= 0)
-            close(fds[i].fd);
-    }
-}
-
-void addConn(socklen_t len, struct sockaddr_in client, int *sockfd, int *newSD, 
-    int *endServ, int *breakFlag) {
-    printf("Listening socket reading\n");
-    fflush(stdout);
-
-    len = (socklen_t) sizeof(client);
-    *newSD = accept(*sockfd,(struct sockaddr *) &client, &len);
-
-    if(*newSD < 0) {
-        if(errno != EWOULDBLOCK) {
-            perror("accept() failed");
-            *endServ = 1;
-            *breakFlag = 1;
-        }
-        return;
-    }
 }
