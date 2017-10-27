@@ -281,7 +281,7 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
 
     if (f == NULL) {
         perror("Opening log file failure\n");
-        return exit(1);
+        return exit(-1);
     }
 
     // Prints the information in the file.log 
