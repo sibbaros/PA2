@@ -36,7 +36,7 @@ void addConn(socklen_t len, struct sockaddr_in client, int *sockfd,
 
 int main(int argc, char *argv[]) {
     // 3 minute timeout window
-    const int TIMEOUT = 3 * 60 * 1000;
+    const int TIMEOUT = 30 * 1000;
     int sockfd, port, rc, numFds = 1, currentClients, endServ = 0, 
         newSD = 0, closeConn, compressArr = 0, breakFlag = 0;
     char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500], message[512];;
@@ -65,7 +65,6 @@ int main(int argc, char *argv[]) {
     port = atoi(argv[1]);
     server.sin_port = htons(port);
     printf("Connection with port: %d\n", port);
-    printf("printing argc: %d\n", argc);
     
     bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));    
     // Set the listen back log and check if working
@@ -96,7 +95,6 @@ int main(int argc, char *argv[]) {
                 fds[i].fd = -1;
                 compressArr = 1;
             }
-            // ekki breaka, heldur loka öllum tengingum
         }
 
         for(int i = 0; i < currentClients; i++) {
@@ -147,13 +145,13 @@ int main(int argc, char *argv[]) {
                     if(errno != EWOULDBLOCK) {
                         closeConn = 1;
                     }
-                    break;
+                    continue;
                 }
 
                 // This is if client closed the connection
                 if(rc == 0) {
                     closeConn = 1;
-                    break;
+                    continue;
                 }
 
                 // This is if data is recieved
@@ -280,6 +278,11 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
     FILE *f;
     // Opens the file or creates it if it does not exist already
     f = fopen("./src/file.log", "a" );
+
+    if (f == NULL) {
+        perror("Opening log file failure\n");
+        return exit(1);
+    }
 
     // Prints the information in the file.log 
     char time[25];
