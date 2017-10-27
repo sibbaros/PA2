@@ -44,8 +44,8 @@ typedef struct Request {
 
 int getArguments(int argc, char* argv[]);
 int checkSocket();
-int checkBind(int sockfd, struct sockaddr_in server);
-int checkListen(int sockfd);
+void checkBind(int sockfd, struct sockaddr_in server);
+void checkListen(int sockfd);
 void reqInit(Request *r);
 void ifHead(char *html);
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL);
@@ -59,7 +59,7 @@ void addConn(int connFd);
 void loopdidoop(int sockfd);
 
 int main(int argc, char *argv[]) {  
-    int sockfd = 0, port = 0, rc = 0;
+    int sockfd = 0, port = 0;
     struct sockaddr_in server;
 
     //**  Checks if we have enough arguments  **//
@@ -74,9 +74,9 @@ int main(int argc, char *argv[]) {
     printf("Connection with port: %d\n", port);
     
     //**  Check Binding  **//
-    rc = checkBind(sockfd, server);
+    checkBind(sockfd, server);
     //**  Set the listen back log and check if working  **//
-    rc = checkListen(sockfd);
+    checkListen(sockfd);
     printf("Listening socket reading\n");
     fflush(stdout);
 
@@ -107,7 +107,7 @@ int checkSocket() {
     return sockfd;
 }
 
-int checkBind(int sockfd, struct sockaddr_in server) {
+void checkBind(int sockfd, struct sockaddr_in server) {
     printf("in checkBind\n");
     fflush(stdout);
     int rc = bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server)); 
@@ -115,10 +115,9 @@ int checkBind(int sockfd, struct sockaddr_in server) {
         perror("bind() failed\n");
         exit(-1);
     }   
-    return rc;
 }
 
-int checkListen(int sockfd) {
+void checkListen(int sockfd) {
     printf("in checkListen\n");
     fflush(stdout);
     int rc = listen(sockfd, 100);
@@ -127,7 +126,6 @@ int checkListen(int sockfd) {
         close(sockfd);
         exit(-1);
     }
-    return rc;
 }
 
 //**  Initializer  **//
