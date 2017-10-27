@@ -2,7 +2,7 @@
 /**                                                                            **/
 /** T-409-TSAM-2017: Computer Networks Programming Assignment 2 – httpd Part 1 **/
 /**          By Alexandra Geirsdóttir & Sigurbjörg Rós Sigurðardóttir          **/
-/**                             October 9 2017                                 **/
+/**                            October 30 2017                                 **/
 /**                                                                            **/
 /********************************************************************************/
 
@@ -13,6 +13,7 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -22,6 +23,24 @@
 #include <unistd.h>
 #include <errno.h>
 #include <glib.h>
+
+typedef enum httpMeth {GET, HEAD, POST, UNKNOWN} httpMeth;
+const char * const https[] = {"GET", "HEAD", "POST", "UNKNOWN"};
+
+//**  Structs  **//
+typedef struct ClientCon {
+    int conn_fd;
+    GTimer *conn_timer;
+    struct sockaddr_in client_sockaddr;
+}ClientCon;
+typedef struct Request {
+    httpMeth method;
+    GString *host;
+    GString *path;
+    GString *message_body;
+    bool connection_close;
+    //GHashTable* headers;
+}Request;
 
 void ifHead(char *html);
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL);
@@ -35,7 +54,7 @@ void addConn(socklen_t len, struct sockaddr_in client, int *sockfd,
     int *newSD, int *endServ, int *breakFlag);
 
 int main(int argc, char *argv[]) {
-    // 3 minute timeout window
+    //**  30 second timeout window  **//
     const int TIMEOUT = 30 * 1000;
     int sockfd, port, rc, numFds = 1, currentClients, endServ = 0, 
         newSD = 0, closeConn, compressArr = 0, breakFlag = 0;
@@ -43,7 +62,7 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in server, client;
     struct pollfd fds[100];
 
-    // Checks if we have enough arguments
+    //**  Checks if we have enough arguments  **//
     if(argc < 2) {
          printf("Error: The server requires a port number.\n");
          fflush(stdout);
