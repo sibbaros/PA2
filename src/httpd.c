@@ -86,6 +86,8 @@ int main(int argc, char *argv[]) {
 }
 
 int getArguments(int argc, char* argv[]) {
+    printf("in getArguments\n");
+    fflush(stdout);
     if(argc < 2) {
         printf("Error: The server requires a port number.\n");
         fflush(stdout);
@@ -95,6 +97,8 @@ int getArguments(int argc, char* argv[]) {
 }
 
 int checkSocket() {
+    printf("in checkSocket\n");
+    fflush(stdout);
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("socket() failed");
@@ -104,6 +108,8 @@ int checkSocket() {
 }
 
 int checkBind(int sockfd, struct sockaddr_in server) {
+    printf("in checkBind\n");
+    fflush(stdout);
     int rc = bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server)); 
     if(rc < 0) {
         perror("bind() failed\n");
@@ -113,6 +119,8 @@ int checkBind(int sockfd, struct sockaddr_in server) {
 }
 
 int checkListen(int sockfd) {
+    printf("in checkListen\n");
+    fflush(stdout);
     int rc = listen(sockfd, 100);
     if(rc < 0) {
         perror("listen() failed\n");
@@ -124,6 +132,8 @@ int checkListen(int sockfd) {
 
 //**  Initializer  **//
 void reqInit(Request *r) {
+    printf("in reqInit\n");
+    fflush(stdout);
     r->host = g_string_new(NULL);
     r->path = g_string_new(NULL);
     r->mBody = g_string_new(NULL);
@@ -133,6 +143,8 @@ void reqInit(Request *r) {
 
 // Called if a Head request is called
 void ifHead(char *html) {
+    printf("in ifHead\n");
+    fflush(stdout);
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n" //Connection: keep-alive //Content length  lengdin af html skránni
     "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
@@ -143,6 +155,8 @@ void ifHead(char *html) {
 // Called if a Get request is called
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) { 
 
+    printf("in ifGet\n");
+    fflush(stdout);
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
     "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
@@ -158,6 +172,8 @@ void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {
 
 // Called if a Post request is sent
 void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
+    printf("in ifPost\n");
+    fflush(stdout);
    // same as get request plus the data in the body of the post request
     char data[512];
     strncpy(data, message, sizeof(data)-1);
@@ -180,6 +196,8 @@ void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
 
 // Called if an unknown request is called
 void ifError(char *html) {
+    printf("in ifError\n");
+    fflush(stdout);
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 501, NOTOK\n"
     "<!DOCTYPE html>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
@@ -190,6 +208,8 @@ void ifError(char *html) {
 // Logs the information in to file.log
 void logFile(struct tm *timeinfo, char *clientPort, char *clientIP, 
              char *request, char *requestURL, char *rCode) {
+    printf("in logFile\n");
+    fflush(stdout);
     FILE *f;
     // Opens the file or creates it if it does not exist already
     f = fopen("./src/file.log", "a" );
@@ -208,6 +228,8 @@ void logFile(struct tm *timeinfo, char *clientPort, char *clientIP,
 }
 
 int compress(int *compressArr, struct pollfd *fds, int numFds) {
+    printf("in compress\n");
+    fflush(stdout);
     *compressArr = 0;
     for(int i = 0; i < numFds; i++) {
         if(fds[i].fd == -1) {
@@ -221,6 +243,8 @@ int compress(int *compressArr, struct pollfd *fds, int numFds) {
 }
 
 void closeConnections(struct pollfd *fds, int numFds) {
+    printf("in closeConnections\n");
+    fflush(stdout);
     for (int i = 0; i < numFds; i++) {
         if(fds[i].fd >= 0)
             close(fds[i].fd);
@@ -228,6 +252,8 @@ void closeConnections(struct pollfd *fds, int numFds) {
 }
 
 void addConn(int connFd) {
+    printf("in addConn\n");
+    fflush(stdout);
     ClientCon *cc = g_new0(ClientCon, 1);
     int addrlen = sizeof(cc->clientSockaddr);
     getpeername(connFd, (struct sockaddr*)&(cc->clientSockaddr), (socklen_t*)&addrlen);
@@ -237,11 +263,13 @@ void addConn(int connFd) {
 }
 
 void loopdidoop(int sockfd) {
+    printf("in loopdidoop\n");
+    fflush(stdout);
     //**  30 second timeout window  **//
     const int TIMEOUT = 30 * 1000;
     int rc = 0, numFds = 1, currentClients = 0, 
         newSD = 0, closeConn = 0, compressArr = 0;
-    char clientIP[500], clientPort[32], ipAddr[INET_ADDRSTRLEN], html[500], message[512];;
+    char clientIP[500], clientPort[32], html[500], message[512];;
     struct sockaddr_in client;
     struct pollfd fds[100];
 
@@ -250,6 +278,7 @@ void loopdidoop(int sockfd) {
     fds[0].fd = sockfd;
     fds[0].events = POLLIN;
     while(TRUE) {
+
         socklen_t len = (socklen_t) sizeof(client);
         rc = poll(fds, numFds, TIMEOUT);
         currentClients = numFds;
@@ -267,19 +296,7 @@ void loopdidoop(int sockfd) {
             }
         }
 
-        int connFd = accept(sockfd, (struct sockaddr *) &client, &len);
-        if(connFd < 0) 
-            if(errno != EWOULDBLOCK) 
-                perror("accept() failed");
-
         for(int i = 0; i < currentClients; i++) {
-
-            getnameinfo((struct sockaddr *)&client, 
-                         len, clientIP, sizeof(clientIP), 
-                         clientPort, sizeof(clientPort), NI_NUMERICHOST | NI_NUMERICSERV);
-
-
-            inet_ntop(AF_INET, &clientIP, ipAddr, INET_ADDRSTRLEN);
             if(fds[i].revents == 0)
                 continue;
 
@@ -289,17 +306,22 @@ void loopdidoop(int sockfd) {
             }
 
             // This is for a new connection
-            if(fds[i].fd == sockfd) {    
-                addConn(/*len, client, &sockfd, &newSD, */connFd);
+            if(fds[i].fd == sockfd) {   
+                if(fds[i].revents & POLLIN) {
+                    int connFd = accept(sockfd, (struct sockaddr *) &client, &len);
+                    if(connFd < 0) 
+                        if(errno != EWOULDBLOCK) 
+                            perror("accept() failed");
 
-                // Add the new incoming connection to the poll
-                fds[numFds].fd = newSD;
-                fds[numFds].events = POLLIN;
-                numFds++;
+                    addConn(connFd);
+
+                    // Add the new incoming connection to the poll
+                    fds[numFds].fd = newSD;
+                    fds[numFds].events = POLLIN;
+                    numFds++;
+                } 
             }
-
             else {
-
                 printf("Inside elseeeee\n");
                 // This is for an already existing connection
                 time_t currenttime;
