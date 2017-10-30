@@ -56,6 +56,7 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
 int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int numFds);
 void addConn(int connFd);
+void closeConn(int i, struct pollfd *fds, int *compressArr);
 void loopdidoop(int sockfd);
 
 int main(int argc, char *argv[]) {  
@@ -252,6 +253,13 @@ void closeConnections(struct pollfd *fds, int numFds) {
     }
 }
 
+void closeConn(int i, struct pollfd *fds, int *compressArr) {
+    printf("closeConn is happening inside func\n");
+    close(fds[i].fd);
+    fds[i].fd = -1;
+    *compressArr = 1;
+}
+
 void addConn(int connFd) {
     printf("in addConn\n");
     fflush(stdout);
@@ -294,7 +302,10 @@ void loopdidoop(int sockfd) {
         }
         if (rc == 0) {
             printf("poll() timeout. \n");
-
+            continue;
+            //close(connection->conn_fd);
+            //g_timer_destroy(connection->conn_timer);
+            
             for (int i = 0; i < currentClients; i++) {
                 close(fds[i].fd);
                 fds[i].fd = -1;
@@ -313,6 +324,7 @@ void loopdidoop(int sockfd) {
                 printf("closeConn rc = %d", rc);
                 //printf("Error! revents = %d\n and", fds[i].revents);// POLLIN = %d\n", fds[i].revents, POLLIN);
                 closeConn = 1;
+                continue;
                 printf("after closeConn rc = %d", rc);
             }
 
@@ -387,7 +399,6 @@ void loopdidoop(int sockfd) {
                 else {
                     printf("%s requests are unsupported by the server.\n", mType);
                     ifError(html);
-                    // strncpy(mType, "SERR", sizeof(mType) -1);
                     strncpy(rCode, "Unsupported Request", sizeof(rCode)-1);
                     printf("Does anything happen here? \n");
                 }
@@ -403,13 +414,20 @@ void loopdidoop(int sockfd) {
                     break;
                 }
 
-                printf("closing conn \n");
+                printf("closing conn : %d \n", i);
 
-                if(closeConn) {
+                if(closeConn == 1) {
+                    printf("closeConn is happening inside loop\n");
                     close(fds[i].fd);
                     fds[i].fd = -1;
                     compressArr = 1;
                 }
+            }
+            if(closeConn) {
+            printf("closeConn is happening outside loop\n");
+            close(fds[i].fd);
+            fds[i].fd = -1;
+            compressArr = 1;
             }
         }
 
