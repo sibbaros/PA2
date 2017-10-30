@@ -142,7 +142,7 @@ void reqInit(Request *r) {
     r->method = UNKNOWN;
 }    
 
-// Called if a Head request is called
+//**  Called if a Head request is called  **//
 void ifHead(char *html) {
     printf("in ifHead\n");
     fflush(stdout);
@@ -153,7 +153,7 @@ void ifHead(char *html) {
 
 }
 
-// Called if a Get request is called
+//**  Called if a Get request is called  **//
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) { 
 
     printf("in ifGet\n");
@@ -171,7 +171,7 @@ void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {
 
 }
 
-// Called if a Post request is sent
+//**  Called if a Post request is sent  **//
 void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
     printf("in ifPost\n");
     fflush(stdout);
@@ -195,7 +195,7 @@ void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
     strcat(html, "\n        </p>\n    </body>\n</html>\n"); 
 }
 
-// Called if an unknown request is called
+//**  Called if an unknown request is called  **//
 void ifError(char *html) {
     printf("in ifError\n");
     fflush(stdout);
@@ -206,13 +206,13 @@ void ifError(char *html) {
     "\n        </h2>\n    </body>\n</html>");
 }
 
-// Logs the information in to file.log
+//**  Logs the information in to file.log  **//
 void logFile(struct tm *timeinfo, char *clientPort, char *clientIP, 
              char *request, char *requestURL, char *rCode) {
     printf("in logFile\n");
     fflush(stdout);
     FILE *f;
-    // Opens the file or creates it if it does not exist already
+    //**  Opens the file or creates it if it does not exist already  **//
     f = fopen("./src/file.log", "a" );
 
     if (f == NULL) {
@@ -220,7 +220,7 @@ void logFile(struct tm *timeinfo, char *clientPort, char *clientIP,
         return exit(-1);
     }
 
-    // Prints the information in the file.log 
+    //**  Prints the information in the file.log  **//
     char time[25];
     strncpy(time, asctime (timeinfo), 23);
     fprintf(f, "%s : %s:%s %s %s : %s\n", time, clientIP, 
@@ -329,7 +329,7 @@ void loopdidoop(int sockfd) {
 
                     addConn(connFd);
 
-                    // Add the new incoming connection to the poll
+                    //**  Add the new incoming connection to the poll  **//
                     fds[numFds].fd = connFd;
                     fds[numFds].events = POLLIN;
                     numFds++;
@@ -358,13 +358,13 @@ void loopdidoop(int sockfd) {
                     continue;
                 }
 
-                // This is if client closed the connection
+                //**  This is if client closed the connection  **//
                 if(rc == 0) {
                     closeConn = 1;
                     continue;
                 }
 
-                // This is if data is recieved
+                //**  This is if data is recieved  **//
                 strncpy(request, message, sizeof(request)-1);
                 requestURL = strchr(request, '/');
                 requestURL = strtok(requestURL, " ");
@@ -418,6 +418,6 @@ void loopdidoop(int sockfd) {
         }
     }
 
-    // Closing all sockets that are open
+    //**  Closing all sockets that are open  **//
     closeConnections(fds, numFds);
 }
