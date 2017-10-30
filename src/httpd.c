@@ -54,7 +54,7 @@ void ifError(char *html);
 void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, 
     char *request, char *requestURL, char *rCode);
 int compress(int *compressArr, struct pollfd *fds, int numFds);
-void closeConnections(struct pollfd *fds, int numFds);
+void closeConnections(struct pollfd *fds, int *numFds);
 int addConn(int connFd, struct pollfd *fds, int numFds);
 int handleConn(struct pollfd *fds);
 void closeConn(int i, struct pollfd *fds, int *compressArr);
@@ -231,9 +231,9 @@ int compress(int *compressArr, struct pollfd *fds, int numFds) {
     return numFds;
 }
 
-void closeConnections(struct pollfd *fds, int numFds) {
+void closeConnections(struct pollfd *fds, int *numFds) {
     fflush(stdout);
-    for (int i = 0; i < numFds; i++) {
+    for (int i = 0; i < *numFds; i++) {
         if(fds[i].fd >= 0)
             close(fds[i].fd);
     }
@@ -289,6 +289,7 @@ void service(int sockfd) {
         }
         if (rc == 0) {
             printf("poll() timeout. \n");
+            closeConnections(fds, &numFds);
             //close(connection->conn_fd);
             //g_timer_destroy(connection->conn_timer);
             /*
@@ -398,5 +399,5 @@ void service(int sockfd) {
     }
 
     //**  Closing all sockets that are open  **//
-    closeConnections(fds, numFds);
+    closeConnections(fds, &numFds);
 }
