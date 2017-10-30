@@ -52,12 +52,13 @@ void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL);
 void ifPost(char *message, char *html, char *clientPort, char *clientIP);
 void ifError(char *html);
 void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, 
-    char *request, char *requestURL, char *rCode);
+             char *request, char *requestURL, char *rCode);
 int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int *numFds);
 int addConn(int connFd, struct pollfd *fds, int numFds);
-int handleConn(struct pollfd *fds);
 void closeConn(int i, struct pollfd *fds, int *compressArr);
+int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client, 
+               socklen_t len, int *compressArr);
 void service(int sockfd);
 
 int main(int argc, char *argv[]) {  
@@ -249,7 +250,8 @@ void closeConn(int i, struct pollfd *fds, int *compressArr) {
 int addConn(int connFd, struct pollfd *fds, int numFds) {
     ClientCon *cc = g_new0(ClientCon, 1);
     int addrlen = sizeof(cc->clientSockaddr);
-    getpeername(connFd, (struct sockaddr*)&(cc->clientSockaddr), (socklen_t*)&addrlen);
+    getpeername(connFd, (struct sockaddr*)&(cc->clientSockaddr), 
+               (socklen_t*)&addrlen);
 
     cc->conn_fd = connFd;
     cc->conn_timer = g_timer_new();
@@ -260,8 +262,66 @@ int addConn(int connFd, struct pollfd *fds, int numFds) {
     return numFds;
 }
 
-int handleConn(struct pollfd *fds) {
-    return 0;
+int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client, 
+               socklen_t len, int *compressArr) {
+    time_t currenttime;
+    struct tm *timeinfo;
+    char request[512], mType[5], rCode[8], *requestURL, clientIP[500], 
+         clientPort[32], html[500], message[512];
+    time (&currenttime);
+    timeinfo = localtime (&currenttime); 
+
+    int rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
+             (struct sockaddr*)&client, &len);
+
+    if(rc < 0) {
+        if(errno != EWOULDBLOCK) {
+            closeConn(i, fds, compressArr);
+        }
+        return rc;
+    }
+
+    //**  This is if client closed the connection  **//
+    if(rc == 0) {
+        closeConn(i, fds, compressArr);
+        return rc;
+    }
+
+    //**  This is if data is recieved  **//
+    strncpy(request, message, sizeof(request)-1);
+    requestURL = strchr(request, '/');
+    requestURL = strtok(requestURL, " ");
+    memcpy(mType, &message[0], 4);
+    mType[4] = '\0';
+    strcpy(rCode, "200, OK");
+
+    if(!(strcmp(mType, "GET "))) {
+        printf("Get request\n");
+        ifGet(html, clientPort, clientIP, requestURL);
+    }
+    else if(!(strcmp(mType, "POST"))) {
+        printf("Post request\n");
+        ifPost(message, html, clientPort, clientIP);
+    }
+    else if(!(strcmp(mType, "HEAD"))) {
+        printf("Head request\n");
+        ifHead(html);
+    }
+    else {
+        printf("%s requests are unsupported by the server.\n", mType);
+        ifError(html);
+        strncpy(rCode, "Unsupported Request", sizeof(rCode)-1);
+    }
+
+    logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode);
+    rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
+
+    if(rc < 0) {
+        perror("send() failed");
+        closeConn(i, fds, compressArr);
+    }   
+
+    return rc;
 }
 
 void service(int sockfd) {
@@ -269,8 +329,7 @@ void service(int sockfd) {
     //**  30 second timeout window  **//
     const int TIMEOUT = 30 * 1000;
     //**  Initializing variables  **//
-    int  numFds = 1, currentClients = 0, compressArr = 0;
-    char clientIP[500], clientPort[32], html[500], message[512];;
+    int  numFds = 1, currentClients = 0, compressArr = 0;;
     struct sockaddr_in client;
     struct pollfd fds[100];
 
@@ -331,64 +390,9 @@ void service(int sockfd) {
                 // todo here if timeout then end connection
                 if(fds[i].revents & POLLIN) {
                     //**  This is for an already existing connection  **//
-                    time_t currenttime;
-                    struct tm *timeinfo;
-                    char request[512], mType[5], rCode[8], *requestURL;
-                    time (&currenttime);
-                    timeinfo = localtime ( &currenttime ); 
-                
-                    //todo check if fds[i].revents is set. (nonzero)
-
-                    rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
-                         (struct sockaddr*)&client, &len);
-
-                    if(rc < 0) {
-                        if(errno != EWOULDBLOCK) {
-                            closeConn(i, fds, &compressArr);
-                        }
+                    rc = handleConn(i, fds, &client, len, &compressArr);
+                    if(rc <= 0)
                         continue;
-                    }
-
-                    //**  This is if client closed the connection  **//
-                    if(rc == 0) {
-                        closeConn(i, fds, &compressArr);
-                        continue;
-                    }
-
-                    //**  This is if data is recieved  **//
-                    strncpy(request, message, sizeof(request)-1);
-                    requestURL = strchr(request, '/');
-                    requestURL = strtok(requestURL, " ");
-                    memcpy(mType, &message[0], 4);
-                    mType[4] = '\0';
-                    strcpy(rCode, "200, OK");
-                    
-                    if(!(strcmp(mType, "GET "))) {
-                        printf("Get request\n");
-                        ifGet(html, clientPort, clientIP, requestURL);
-                    }
-                    else if(!(strcmp(mType, "POST"))) {
-                        printf("Post request\n");
-                        ifPost(message, html, clientPort, clientIP);
-                    }
-                    else if(!(strcmp(mType, "HEAD"))) {
-                        printf("Head request\n");
-                        ifHead(html);
-                    }
-                    else {
-                        printf("%s requests are unsupported by the server.\n", mType);
-                        ifError(html);
-                        strncpy(rCode, "Unsupported Request", sizeof(rCode)-1);
-                    }
-
-                    logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode);
-                    rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
-
-                    if(rc < 0) {
-                        perror("send() failed");
-                        closeConn(i, fds, &compressArr);
-                        break;
-                    }
                 }
             }
         }
