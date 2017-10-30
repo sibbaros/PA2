@@ -64,8 +64,10 @@ int main(int argc, char *argv[]) {
 
     //**  Checks if we have enough arguments  **//
     port = getArguments(argc, argv);
+    printf("in main after port function\n");
     //**  Create a socket to recieve incoming connections  **//
     sockfd = checkSocket();
+    printf("in main after sockfd\n");
     //**  Setting values  **//
     memset(&server, 0, sizeof(server));
     server.sin_family = AF_INET;
@@ -75,11 +77,12 @@ int main(int argc, char *argv[]) {
     
     //**  Check Binding  **//
     checkBind(sockfd, server);
+    printf("main after checkBind\n");
     //**  Set the listen back log and check if working  **//
     checkListen(sockfd);
     printf("Listening socket reading\n");
     fflush(stdout);
-
+    printf("befor loopdidoop sockfd is : %d\n", sockfd);
     loopdidoop(sockfd);
 
     return 0;
@@ -261,12 +264,12 @@ void addConn(int connFd) {
 }
 
 void loopdidoop(int sockfd) {
-    printf("in loopdidoop\n");
+    printf("in loopdidoop sockfd is : %d\n", sockfd);
     fflush(stdout);
     //**  30 second timeout window  **//
     const int TIMEOUT = 30 * 1000;
-    int rc = 0, numFds = 1, currentClients = 0, 
-        newSD = 0, closeConn = 0, compressArr = 0;
+    int  numFds = 1, currentClients = 0, 
+          /*newSD = 0,*/ closeConn = 0, compressArr = 0;
     char clientIP[500], clientPort[32], html[500], message[512];;
     struct sockaddr_in client;
     struct pollfd fds[100];
@@ -279,20 +282,18 @@ void loopdidoop(int sockfd) {
         printf("in loop - while\n");
         fflush(stdout);
         socklen_t len = (socklen_t) sizeof(client);
-        printf("I crash here\n");
-        printf("fds : %lu, numFds : %d \n", sizeof(fds), numFds );
-        rc = poll(fds, numFds, TIMEOUT);
+        printf("Timeout : %d \n", TIMEOUT);
+        int rc = poll(fds, numFds, TIMEOUT);
         printf("fds : %lu, numFds : %d, rc : %d \n", sizeof(fds), numFds, rc);
-        printf("I made it to here\n");
         currentClients = numFds;
         printf("rc : %i\n", rc );
         fflush(stdout);
         if (rc < 0) {
-            perror("poll() failed");
+            perror("poll() failed\n");
             break;
         }
         if (rc == 0) {
-            printf("poll() timeout. d");
+            printf("poll() timeout. \n");
 
             for (int i = 0; i < currentClients; i++) {
                 close(fds[i].fd);
@@ -304,12 +305,15 @@ void loopdidoop(int sockfd) {
         for(int i = 0; i < currentClients; i++) {
             printf("in loop - for\n");
             fflush(stdout);
-            if(fds[i].revents == 0)
+            if(fds[i].revents == 0){
+                printf("in loop - for - if\n");
                 continue;
-
+            }
             if(fds[i].revents != POLLIN) {
+                printf("closeConn rc = %d", rc);
                 //printf("Error! revents = %d\n and", fds[i].revents);// POLLIN = %d\n", fds[i].revents, POLLIN);
                 closeConn = 1;
+                printf("after closeConn rc = %d", rc);
             }
 
             printf("fds[i].fd : %i and sockfd : %i \n", fds[i].fd, sockfd);
@@ -326,7 +330,7 @@ void loopdidoop(int sockfd) {
                     addConn(connFd);
 
                     // Add the new incoming connection to the poll
-                    fds[numFds].fd = newSD;
+                    fds[numFds].fd = connFd;
                     fds[numFds].events = POLLIN;
                     numFds++;
                 } 
