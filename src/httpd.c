@@ -268,8 +268,8 @@ void loopdidoop(int sockfd) {
     fflush(stdout);
     //**  30 second timeout window  **//
     const int TIMEOUT = 30 * 1000;
-    int  numFds = 1, currentClients = 0, 
-          /*newSD = 0,*/ closeConn = 0, compressArr = 0;
+    //**  Initializing variables  **//
+    int  numFds = 1, currentClients = 0, closeConn = 0, compressArr = 0;
     char clientIP[500], clientPort[32], html[500], message[512];;
     struct sockaddr_in client;
     struct pollfd fds[100];
@@ -317,7 +317,7 @@ void loopdidoop(int sockfd) {
             }
 
             printf("fds[i].fd : %i and sockfd : %i \n", fds[i].fd, sockfd);
-            // This is for a new connection
+            //**  This is for a new connection  **//
             if(fds[i].fd == sockfd) { 
                 printf("in loop - for - if\n");
                 fflush(stdout);  
@@ -337,7 +337,7 @@ void loopdidoop(int sockfd) {
             }
             else {
                 printf("Inside elseeeee\n");
-                // This is for an already existing connection
+                //**  This is for an already existing connection  **//
                 time_t currenttime;
                 struct tm *timeinfo;
                 char request[512], mType[5], rCode[8], *requestURL;
