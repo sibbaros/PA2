@@ -55,9 +55,9 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
     char *request, char *requestURL, char *rCode);
 int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int numFds);
-void addConn(int connFd);
+int addConn(int connFd, struct pollfd *fds, int numFds);
 void closeConn(int i, struct pollfd *fds, int *compressArr);
-void loopdidoop(int sockfd);
+void service(int sockfd);
 
 int main(int argc, char *argv[]) {  
     int sockfd = 0, port = 0;
@@ -65,10 +65,8 @@ int main(int argc, char *argv[]) {
 
     //**  Checks if we have enough arguments  **//
     port = getArguments(argc, argv);
-    printf("in main after port function\n");
     //**  Create a socket to recieve incoming connections  **//
     sockfd = checkSocket();
-    printf("in main after sockfd\n");
     //**  Setting values  **//
     memset(&server, 0, sizeof(server));
     server.sin_family = AF_INET;
@@ -78,22 +76,19 @@ int main(int argc, char *argv[]) {
     
     //**  Check Binding  **//
     checkBind(sockfd, server);
-    printf("main after checkBind\n");
     //**  Set the listen back log and check if working  **//
     checkListen(sockfd);
     printf("Listening socket reading\n");
     fflush(stdout);
-    printf("befor loopdidoop sockfd is : %d\n", sockfd);
-    loopdidoop(sockfd);
+    service(sockfd);
 
     return 0;
 }
 
 int getArguments(int argc, char* argv[]) {
-    printf("in getArguments\n");
     fflush(stdout);
     if(argc < 2) {
-        printf("Error: The server requires a port number.\n");
+        printf("The server requires a port number.\n");
         fflush(stdout);
         exit(-1);
     }
@@ -101,7 +96,6 @@ int getArguments(int argc, char* argv[]) {
 }
 
 int checkSocket() {
-    printf("in checkSocket\n");
     fflush(stdout);
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
@@ -112,7 +106,6 @@ int checkSocket() {
 }
 
 void checkBind(int sockfd, struct sockaddr_in server) {
-    printf("in checkBind\n");
     fflush(stdout);
     int rc = bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server)); 
     if(rc < 0) {
@@ -122,7 +115,6 @@ void checkBind(int sockfd, struct sockaddr_in server) {
 }
 
 void checkListen(int sockfd) {
-    printf("in checkListen\n");
     fflush(stdout);
     int rc = listen(sockfd, 100);
     if(rc < 0) {
@@ -134,7 +126,6 @@ void checkListen(int sockfd) {
 
 //**  Initializer  **//
 void reqInit(Request *r) {
-    printf("in reqInit\n");
     fflush(stdout);
     r->host = g_string_new(NULL);
     r->path = g_string_new(NULL);
@@ -145,7 +136,6 @@ void reqInit(Request *r) {
 
 //**  Called if a Head request is called  **//
 void ifHead(char *html) {
-    printf("in ifHead\n");
     fflush(stdout);
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n" //Connection: keep-alive //Content length  lengdin af html skránni
@@ -157,7 +147,6 @@ void ifHead(char *html) {
 //**  Called if a Get request is called  **//
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) { 
 
-    printf("in ifGet\n");
     fflush(stdout);
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
@@ -174,7 +163,6 @@ void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) {
 
 //**  Called if a Post request is sent  **//
 void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
-    printf("in ifPost\n");
     fflush(stdout);
    // same as get request plus the data in the body of the post request
     char data[512];
@@ -198,7 +186,6 @@ void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
 
 //**  Called if an unknown request is called  **//
 void ifError(char *html) {
-    printf("in ifError\n");
     fflush(stdout);
     html[0] = '\0';
     strcat(html, "\nHTTP/1.1 501, NOTOK\n"
@@ -210,7 +197,6 @@ void ifError(char *html) {
 //**  Logs the information in to file.log  **//
 void logFile(struct tm *timeinfo, char *clientPort, char *clientIP, 
              char *request, char *requestURL, char *rCode) {
-    printf("in logFile\n");
     fflush(stdout);
     FILE *f;
     //**  Opens the file or creates it if it does not exist already  **//
@@ -230,14 +216,15 @@ void logFile(struct tm *timeinfo, char *clientPort, char *clientIP,
 }
 
 int compress(int *compressArr, struct pollfd *fds, int numFds) {
-    printf("in compress\n");
+    printf("in compressArr\n");
     fflush(stdout);
     *compressArr = 0;
     for(int i = 0; i < numFds; i++) {
         if(fds[i].fd == -1) {
-            for(int j = 0; i < numFds; j++) {
+            for(int j = 0; j < numFds; j++) {
                 fds[i].fd = fds[j+1].fd;
             }
+            
             numFds--;
         }
     }
@@ -245,7 +232,6 @@ int compress(int *compressArr, struct pollfd *fds, int numFds) {
 }
 
 void closeConnections(struct pollfd *fds, int numFds) {
-    printf("in closeConnections\n");
     fflush(stdout);
     for (int i = 0; i < numFds; i++) {
         if(fds[i].fd >= 0)
@@ -260,8 +246,7 @@ void closeConn(int i, struct pollfd *fds, int *compressArr) {
     *compressArr = 1;
 }
 
-void addConn(int connFd) {
-    printf("in addConn\n");
+int addConn(int connFd, struct pollfd *fds, int numFds) {
     fflush(stdout);
     ClientCon *cc = g_new0(ClientCon, 1);
     int addrlen = sizeof(cc->clientSockaddr);
@@ -269,10 +254,14 @@ void addConn(int connFd) {
 
     cc->conn_fd = connFd;
     cc->conn_timer = g_timer_new();
+
+    fds[numFds].fd = connFd;
+    fds[numFds].events = POLLIN;
+    numFds++;
+    return numFds;
 }
 
-void loopdidoop(int sockfd) {
-    printf("in loopdidoop sockfd is : %d\n", sockfd);
+void service(int sockfd) {
     fflush(stdout);
     //**  30 second timeout window  **//
     const int TIMEOUT = 30 * 1000;
@@ -287,14 +276,10 @@ void loopdidoop(int sockfd) {
     fds[0].fd = sockfd;
     fds[0].events = POLLIN;
     while(TRUE) {
-        printf("in loop - while\n");
         fflush(stdout);
         socklen_t len = (socklen_t) sizeof(client);
-        printf("Timeout : %d \n", TIMEOUT);
         int rc = poll(fds, numFds, TIMEOUT);
-        printf("fds : %lu, numFds : %d, rc : %d \n", sizeof(fds), numFds, rc);
         currentClients = numFds;
-        printf("rc : %i\n", rc );
         fflush(stdout);
         if (rc < 0) {
             perror("poll() failed\n");
@@ -302,53 +287,49 @@ void loopdidoop(int sockfd) {
         }
         if (rc == 0) {
             printf("poll() timeout. \n");
-            continue;
             //close(connection->conn_fd);
             //g_timer_destroy(connection->conn_timer);
-            
-            for (int i = 0; i < currentClients; i++) {
+            /*
+            for(int i = 0; i < currentClients; i++) {
                 close(fds[i].fd);
                 fds[i].fd = -1;
                 compressArr = 1;
-            }
+            }*/
         }
 
         for(int i = 0; i < currentClients; i++) {
-            printf("in loop - for\n");
             fflush(stdout);
             if(fds[i].revents == 0){
-                printf("in loop - for - if\n");
                 continue;
             }
-            if(fds[i].revents != POLLIN) {
-                printf("closeConn rc = %d", rc);
-                //printf("Error! revents = %d\n and", fds[i].revents);// POLLIN = %d\n", fds[i].revents, POLLIN);
-                closeConn = 1;
+            if(fds[i].revents & POLLHUP) {
+                printf("Closing connection because the device has been disconnected. \n");
+                fflush(stdout);
+                shutdown(fds[i].fd, SHUT_RDWR);
+                close(fds[i].fd);
+                fds[i].fd = -1;
+                compressArr = 1;
                 continue;
-                printf("after closeConn rc = %d", rc);
+            }
+            if(fds[i].revents & POLLERR) {
+                printf("An error has occurred on the device or stream. \n");
+                fflush(stdout);
+                break;
             }
 
-            printf("fds[i].fd : %i and sockfd : %i \n", fds[i].fd, sockfd);
-            //**  This is for a new connection  **//
+            //** This is for a new connection **//
             if(fds[i].fd == sockfd) { 
-                printf("in loop - for - if\n");
-                fflush(stdout);  
                 if(fds[i].revents & POLLIN) {
                     int connFd = accept(sockfd, (struct sockaddr *) &client, &len);
                     if(connFd < 0) 
                         if(errno != EWOULDBLOCK) 
                             perror("accept() failed");
-
-                    addConn(connFd);
-
                     //**  Add the new incoming connection to the poll  **//
-                    fds[numFds].fd = connFd;
-                    fds[numFds].events = POLLIN;
-                    numFds++;
+                    numFds = addConn(connFd, fds, numFds);
                 } 
             }
             else {
-                printf("Inside elseeeee\n");
+
                 //**  This is for an already existing connection  **//
                 time_t currenttime;
                 struct tm *timeinfo;
@@ -365,14 +346,14 @@ void loopdidoop(int sockfd) {
 
                 if(rc < 0) {
                     if(errno != EWOULDBLOCK) {
-                        closeConn = 1;
+                        closeConn = i;
                     }
                     continue;
                 }
 
                 //**  This is if client closed the connection  **//
                 if(rc == 0) {
-                    closeConn = 1;
+                    closeConn = i;
                     continue;
                 }
 
@@ -400,17 +381,14 @@ void loopdidoop(int sockfd) {
                     printf("%s requests are unsupported by the server.\n", mType);
                     ifError(html);
                     strncpy(rCode, "Unsupported Request", sizeof(rCode)-1);
-                    printf("Does anything happen here? \n");
                 }
 
-                printf("about to send \n");
                 logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode);
                 rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
-                printf("sent\n");
 
                 if(rc < 0) {
                     perror("send() failed");
-                    closeConn = 1;
+                    closeConn = i;
                     break;
                 }
 
@@ -423,14 +401,8 @@ void loopdidoop(int sockfd) {
                     compressArr = 1;
                 }
             }
-            if(closeConn) {
-            printf("closeConn is happening outside loop\n");
-            close(fds[i].fd);
-            fds[i].fd = -1;
-            compressArr = 1;
-            }
         }
-
+        
         if(compressArr) {
             numFds = compress(&compressArr, (struct pollfd*)&fds, numFds);
         }
