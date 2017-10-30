@@ -51,8 +51,8 @@ void ifHead(char *html);
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL);
 void ifPost(char *message, char *html, char *clientPort, char *clientIP);
 void ifError(char *html);
-void logFile(struct tm * timeinfo, char *clientPort, char *clientIP, 
-             char *request, char *requestURL, char *rCode);
+void logFile(char *clientPort, char *clientIP, char *request, 
+             char *requestURL, char *rCode);
 int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int *numFds);
 int addConn(int connFd, struct pollfd *fds, int numFds);
@@ -196,9 +196,13 @@ void ifError(char *html) {
 }
 
 //**  Logs the information in to file.log  **//
-void logFile(struct tm *timeinfo, char *clientPort, char *clientIP, 
-             char *request, char *requestURL, char *rCode) {
+void logFile(char *clientPort, char *clientIP, char *request, 
+             char *requestURL, char *rCode) {
     fflush(stdout);
+    time_t currenttime;
+    struct tm *timeinfo;
+    time (&currenttime);
+    timeinfo = localtime (&currenttime);
     FILE *f;
     //**  Opens the file or creates it if it does not exist already  **//
     f = fopen("./src/file.log", "a" );
@@ -264,13 +268,13 @@ int addConn(int connFd, struct pollfd *fds, int numFds) {
 
 int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client, 
                socklen_t len, int *compressArr) {
-    time_t currenttime;
-    struct tm *timeinfo;
     char request[512], mType[5], rCode[8], *requestURL, clientIP[500], 
          clientPort[32], html[500], message[512];
-    time (&currenttime);
-    timeinfo = localtime (&currenttime); 
-
+    /*
+    Request request;
+    init_Request(&request);
+    GString *response = g_string_sized_new(1024);
+*/
     int rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
              (struct sockaddr*)&client, &len);
 
@@ -313,7 +317,7 @@ int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client,
         strncpy(rCode, "Unsupported Request", sizeof(rCode)-1);
     }
 
-    logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode);
+    logFile(clientIP, clientPort, mType, requestURL, rCode);
     rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
 
     if(rc < 0) {
