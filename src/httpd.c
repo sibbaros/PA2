@@ -1,8 +1,8 @@
 /********************************************************************************/
 /**                                                                            **/
-/** T-409-TSAM-2017: Computer Networks Programming Assignment 2 – httpd Part 1 **/
+/** T-409-TSAM-2017: Computer Networks Programming Assignment 2 – httpd Part 2 **/
 /**          By Alexandra Geirsdóttir & Sigurbjörg Rós Sigurðardóttir          **/
-/**                            October 30 2017                                 **/
+/**                            November 6 2017                                 **/
 /**                                                                            **/
 /********************************************************************************/
 
@@ -56,6 +56,7 @@ void logFile(struct tm * timeinfo, char *clientPort, char *clientIP,
 int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int numFds);
 int addConn(int connFd, struct pollfd *fds, int numFds);
+int handleConn(struct pollfd *fds);
 void closeConn(int i, struct pollfd *fds, int *compressArr);
 void service(int sockfd);
 
@@ -86,7 +87,6 @@ int main(int argc, char *argv[]) {
 }
 
 int getArguments(int argc, char* argv[]) {
-    fflush(stdout);
     if(argc < 2) {
         printf("The server requires a port number.\n");
         fflush(stdout);
@@ -96,29 +96,29 @@ int getArguments(int argc, char* argv[]) {
 }
 
 int checkSocket() {
-    fflush(stdout);
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("socket() failed");
+        fflush(stdout);
         exit(-1);
     }
     return sockfd;
 }
 
 void checkBind(int sockfd, struct sockaddr_in server) {
-    fflush(stdout);
     int rc = bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server)); 
     if(rc < 0) {
         perror("bind() failed\n");
+        fflush(stdout);
         exit(-1);
     }   
 }
 
 void checkListen(int sockfd) {
-    fflush(stdout);
     int rc = listen(sockfd, 100);
     if(rc < 0) {
         perror("listen() failed\n");
+        fflush(stdout);
         close(sockfd);
         exit(-1);
     }
@@ -240,14 +240,13 @@ void closeConnections(struct pollfd *fds, int numFds) {
 }
 
 void closeConn(int i, struct pollfd *fds, int *compressArr) {
-    printf("closeConn is happening inside func\n");
+    shutdown(fds[i].fd, SHUT_RDWR);
     close(fds[i].fd);
     fds[i].fd = -1;
     *compressArr = 1;
 }
 
 int addConn(int connFd, struct pollfd *fds, int numFds) {
-    fflush(stdout);
     ClientCon *cc = g_new0(ClientCon, 1);
     int addrlen = sizeof(cc->clientSockaddr);
     getpeername(connFd, (struct sockaddr*)&(cc->clientSockaddr), (socklen_t*)&addrlen);
@@ -261,12 +260,16 @@ int addConn(int connFd, struct pollfd *fds, int numFds) {
     return numFds;
 }
 
+int handleConn(struct pollfd *fds) {
+    return 0;
+}
+
 void service(int sockfd) {
     fflush(stdout);
     //**  30 second timeout window  **//
     const int TIMEOUT = 30 * 1000;
     //**  Initializing variables  **//
-    int  numFds = 1, currentClients = 0, closeConn = 0, compressArr = 0;
+    int  numFds = 1, currentClients = 0, compressArr = 0;
     char clientIP[500], clientPort[32], html[500], message[512];;
     struct sockaddr_in client;
     struct pollfd fds[100];
@@ -280,7 +283,6 @@ void service(int sockfd) {
         socklen_t len = (socklen_t) sizeof(client);
         int rc = poll(fds, numFds, TIMEOUT);
         currentClients = numFds;
-        fflush(stdout);
         if (rc < 0) {
             perror("poll() failed\n");
             break;
@@ -304,101 +306,88 @@ void service(int sockfd) {
             }
             if(fds[i].revents & POLLHUP) {
                 printf("Closing connection because the device has been disconnected. \n");
-                fflush(stdout);
-                shutdown(fds[i].fd, SHUT_RDWR);
-                close(fds[i].fd);
-                fds[i].fd = -1;
-                compressArr = 1;
+                closeConn(i, fds, &compressArr);
                 continue;
             }
             if(fds[i].revents & POLLERR) {
                 printf("An error has occurred on the device or stream. \n");
-                fflush(stdout);
                 break;
             }
 
-            //** This is for a new connection **//
+            //**  This is for a new connection  **//
             if(fds[i].fd == sockfd) { 
                 if(fds[i].revents & POLLIN) {
                     int connFd = accept(sockfd, (struct sockaddr *) &client, &len);
                     if(connFd < 0) 
                         if(errno != EWOULDBLOCK) 
                             perror("accept() failed");
+                    fflush(stdout);
                     //**  Add the new incoming connection to the poll  **//
                     numFds = addConn(connFd, fds, numFds);
                 } 
             }
             else {
-
-                //**  This is for an already existing connection  **//
-                time_t currenttime;
-                struct tm *timeinfo;
-                char request[512], mType[5], rCode[8], *requestURL;
-                time ( &currenttime );
-                timeinfo = localtime ( &currenttime ); 
+                // todo here if timeout then end connection
+                if(fds[i].revents & POLLIN) {
+                    //**  This is for an already existing connection  **//
+                    time_t currenttime;
+                    struct tm *timeinfo;
+                    char request[512], mType[5], rCode[8], *requestURL;
+                    time (&currenttime);
+                    timeinfo = localtime ( &currenttime ); 
                 
-                closeConn = 0;
-                
-                //todo check if fds[i].revents is set. (nonzero)
+                    //todo check if fds[i].revents is set. (nonzero)
 
-                rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
-                    (struct sockaddr*)&client, &len);
+                    rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
+                         (struct sockaddr*)&client, &len);
 
-                if(rc < 0) {
-                    if(errno != EWOULDBLOCK) {
-                        closeConn = i;
+                    if(rc < 0) {
+                        if(errno != EWOULDBLOCK) {
+                            closeConn(i, fds, &compressArr);
+                        }
+                        continue;
                     }
-                    continue;
-                }
 
-                //**  This is if client closed the connection  **//
-                if(rc == 0) {
-                    closeConn = i;
-                    continue;
-                }
+                    //**  This is if client closed the connection  **//
+                    if(rc == 0) {
+                        closeConn(i, fds, &compressArr);
+                        continue;
+                    }
 
-                //**  This is if data is recieved  **//
-                strncpy(request, message, sizeof(request)-1);
-                requestURL = strchr(request, '/');
-                requestURL = strtok(requestURL, " ");
-                memcpy(mType, &message[0], 4);
-                mType[4] = '\0';
-                strcpy(rCode, "200, OK");
-                
-                if(!(strcmp(mType, "GET "))) {
-                    printf("Get request\n");
-                    ifGet(html, clientPort, clientIP, requestURL);
-                }
-                else if(!(strcmp(mType, "POST"))) {
-                    printf("Post request\n");
-                    ifPost(message, html, clientPort, clientIP);
-                }
-                else if(!(strcmp(mType, "HEAD"))) {
-                    printf("Head request\n");
-                    ifHead(html);
-                }
-                else {
-                    printf("%s requests are unsupported by the server.\n", mType);
-                    ifError(html);
-                    strncpy(rCode, "Unsupported Request", sizeof(rCode)-1);
-                }
+                    //**  This is if data is recieved  **//
+                    strncpy(request, message, sizeof(request)-1);
+                    requestURL = strchr(request, '/');
+                    requestURL = strtok(requestURL, " ");
+                    memcpy(mType, &message[0], 4);
+                    mType[4] = '\0';
+                    strcpy(rCode, "200, OK");
+                    
+                    if(!(strcmp(mType, "GET "))) {
+                        printf("Get request\n");
+                        ifGet(html, clientPort, clientIP, requestURL);
+                    }
+                    else if(!(strcmp(mType, "POST"))) {
+                        printf("Post request\n");
+                        ifPost(message, html, clientPort, clientIP);
+                    }
+                    else if(!(strcmp(mType, "HEAD"))) {
+                        printf("Head request\n");
+                        ifHead(html);
+                    }
+                    else {
+                        printf("%s requests are unsupported by the server.\n", mType);
+                        ifError(html);
+                        strncpy(rCode, "Unsupported Request", sizeof(rCode)-1);
+                    }
 
-                logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode);
-                rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
+                    logFile(timeinfo, clientIP, clientPort, mType, requestURL, rCode);
+                    rc = send(fds[i].fd, &html, sizeof(html) -1, 0);
 
-                if(rc < 0) {
-                    perror("send() failed");
-                    closeConn = i;
-                    break;
-                }
-
-                printf("closing conn : %d \n", i);
-
-                if(closeConn == 1) {
-                    printf("closeConn is happening inside loop\n");
-                    close(fds[i].fd);
-                    fds[i].fd = -1;
-                    compressArr = 1;
+                    if(rc < 0) {
+                        perror("send() failed");
+                        closeConn(i, fds, &compressArr);
+                        break;
+                    }
                 }
             }
         }
