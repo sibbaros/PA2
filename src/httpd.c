@@ -39,7 +39,6 @@ typedef struct Request {
     GString *path;
     GString *mBody;
     bool closeCon;
-    //GHashTable* headers;
 }Request;
 
 int getArguments(int argc, char* argv[]);
@@ -75,7 +74,6 @@ int main(int argc, char *argv[]) {
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     server.sin_port = htons(port);
     printf("Connection with port: %d\n", port);
-    
     //**  Check Binding  **//
     checkBind(sockfd, server);
     //**  Set the listen back log and check if working  **//
@@ -276,23 +274,27 @@ void getDateAndTime(char* dateAndTime) {
 void handleConn(int connFd, int i, struct pollfd *fds, int *compressArr) {
     /*char request[512], mType[5], rCode[8], *requestURL, clientIP[500], 
          clientPort[32], html[500], message[512];*/
-    
+    printf("in handle conn\n");
     Request req;
     reqInit(&req);
     GString *response = g_string_sized_new(1024);
     GString *recvdMsg = g_string_sized_new(1024);
     // message was not received or has length 0
+    printf("before if\n");
     if (!recvMsg(connFd, recvdMsg)) {
+        printf("in if\n");
         req.closeCon = true;
         g_string_free(recvdMsg, TRUE);
         g_string_free(response, TRUE);
         closeConn(i, fds, compressArr);
     }
+    printf("after if\n");
     char dateAndTime[512];
     getDateAndTime(dateAndTime);
     g_string_append(response, "HTTP/1.1 200 OK\r\n");
     g_string_append(response, "Content-Type: text/html; charset=utf-8\r\n");
     g_string_append_printf(response, "Date: %s\r\n", dateAndTime);
+    printf("%s\n", response->str);
 
 
     /*int rc = 0;recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
@@ -338,7 +340,7 @@ void handleConn(int connFd, int i, struct pollfd *fds, int *compressArr) {
     }
 
     logFile(clientIP, clientPort, mType, requestURL, rCode);*/
-    int rc = send(fds[i].fd, response, sizeof(response) -1, 0);
+    int rc = send(fds[i].fd, response->str, response->len, 0);
 
     if(rc < 0) {
         perror("send() failed");
@@ -369,6 +371,7 @@ bool recvMsg(int connFd, GString *msg){
 }
 
 void service(int sockfd) {
+    printf("inside service\n");
     fflush(stdout);
     //**  30 second timeout window  **//
     const int TIMEOUT = 30 * 1000;
@@ -382,6 +385,7 @@ void service(int sockfd) {
     fds[0].fd = sockfd;
     fds[0].events = POLLIN;
     while(TRUE) {
+        printf("inside while\n");
         fflush(stdout);
         socklen_t len = (socklen_t) sizeof(client);
         int rc = poll(fds, numFds, TIMEOUT);
@@ -404,6 +408,7 @@ void service(int sockfd) {
         }
 
         for(int i = 0; i < currentClients; i++) {
+            printf("inside for\n");
             fflush(stdout);
             if(fds[i].revents == 0){
                 continue;
@@ -419,24 +424,31 @@ void service(int sockfd) {
             }
 
             //**  This is for a new connection  **//
-            if(fds[i].revents & POLLIN) {
-                int connFd = accept(sockfd, (struct sockaddr *) &client, &len);
-                if(connFd < 0) 
-                    if(errno != EWOULDBLOCK) 
-                        perror("accept() failed");
+            int connFd = accept(sockfd, (struct sockaddr *) &client, &len);
+            if(connFd < 0) 
+                if(errno != EWOULDBLOCK) 
+                    perror("accept() failed");
+            if(fds[i].fd == sockfd) {
+                if(fds[i].revents & POLLIN) {
+                    printf("inside fds revents & pollin if\n");
+                    /*int connFd = accept(sockfd, (struct sockaddr *) &client, &len);
+                    if(connFd < 0) 
+                        if(errno != EWOULDBLOCK) 
+                            perror("accept() failed");*/
                     fflush(stdout);
-                if(fds[i].fd == sockfd) {
                     //**  Add the new incoming connection to the poll  **//
                     numFds = addConn(connFd, fds, numFds);
                 }
-                else {
-                    // todo here if timeout then end connection
-                    if(fds[i].revents & POLLIN) {
-                        //**  This is for an already existing connection  **//
-                        handleConn(connFd, i, fds, &compressArr);
-                        /*if(rc <= 0)
-                            continue;*/
-                    }
+            }
+            else {
+                printf("before if & handleConn\n");
+                // todo here if timeout then end connection
+                if(fds[i].revents & POLLIN) {
+                    //**  This is for an already existing connection  **//
+                    printf("inside if before handleConn\n");
+                    handleConn(connFd, i, fds, &compressArr);
+                    /*if(rc <= 0)
+                        continue;*/
                 }
             }
         }
