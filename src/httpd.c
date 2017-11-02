@@ -221,8 +221,6 @@ void logFile(char *clientPort, char *clientIP, char *request,
 }
 
 int compress(int *compressArr, struct pollfd *fds, int numFds) {
-    printf("in compressArr\n");
-    fflush(stdout);
     *compressArr = 0;
     for(int i = 0; i < numFds; i++) {
         if(fds[i].fd == -1) {
@@ -273,8 +271,8 @@ int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client,
     /*
     Request request;
     init_Request(&request);
-    GString *response = g_string_sized_new(1024);
-*/
+    GString *response = g_string_sized_new(1024);*/
+
     int rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
              (struct sockaddr*)&client, &len);
 
