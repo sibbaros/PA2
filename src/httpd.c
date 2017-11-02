@@ -26,7 +26,7 @@
 
 typedef enum httpMeth {GET, HEAD, POST, UNKNOWN} httpMeth;
 const char *const https[] = {"GET", "HEAD", "POST", "UNKNOWN"};
-
+const int maxSize = 100;
 //**  Structs  **//
 typedef struct ClientCon {
     int conn_fd;
@@ -41,6 +41,10 @@ typedef struct Request {
     bool closeCon;
     //GHashTable* headers;
 }Request;
+
+struct ClientCon cc[maxSize];
+
+
 
 int getArguments(int argc, char* argv[]);
 int checkSocket();
@@ -168,7 +172,7 @@ void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
    // same as get request plus the data in the body of the post request
     char data[512];
     strncpy(data, message, sizeof(data)-1);
-    char *dataInfo;
+    char *dataInfo = NULL;
     dataInfo = strstr(data, "\r\n\r\n");
     printf("%s\n", dataInfo);
 
@@ -250,17 +254,24 @@ void closeConn(int i, struct pollfd *fds, int *compressArr) {
 }
 
 int addConn(int connFd, struct pollfd *fds, int numFds) {
-    ClientCon *cc = g_new0(ClientCon, 1);
+    if(numFds < maxSize){
+        cc[numFds] = *g_new0(ClientCon, 1);
+        cc[numFds].conn_fd = connFd;
+        cc[numFds].conn_timer = g_timer_new();
+        g_timer_start(cc[numFds].conn_timer);
+        //cc[*numFds].clientSockaddr;
+    }
+    //ClientCon *cc = g_new0(ClientCon, 1);
     int addrlen = sizeof(cc->clientSockaddr);
-    getpeername(connFd, (struct sockaddr*)&(cc->clientSockaddr), 
+    /*getpeername(connFd, (struct sockaddr*)&(cc->clientSockaddr), 
                (socklen_t*)&addrlen);
 
     cc->conn_fd = connFd;
-    cc->conn_timer = g_timer_new();
+    cc->conn_timer = g_timer_new();*/
 
     fds[numFds].fd = connFd;
     fds[numFds].events = POLLIN;
-    numFds++;
+    numFds ++;
     return numFds;
 }
 
@@ -299,19 +310,23 @@ int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client,
 
     if(!(strcmp(mType, "GET "))) {
         printf("Get request\n");
+        g_timer_reset(cc[i].conn_timer);
         ifGet(html, clientPort, clientIP, requestURL);
     }
     else if(!(strcmp(mType, "POST"))) {
         printf("Post request\n");
+        g_timer_reset(cc[i].conn_timer);
         ifPost(message, html, clientPort, clientIP);
     }
     else if(!(strcmp(mType, "HEAD"))) {
         printf("Head request\n");
+        g_timer_reset(cc[i].conn_timer);
         ifHead(html);
     }
     else {
         printf("%s requests are unsupported by the server.\n", mType);
         ifError(html);
+        g_timer_reset(cc[i].conn_timer);
         strncpy(rCode, "Unsupported Request", sizeof(rCode)-1);
     }
 
@@ -350,7 +365,12 @@ void service(int sockfd) {
         }
         if (rc == 0) {
             printf("poll() timeout. \n");
-            closeConnections(fds, &numFds);
+            for (int i = 0; i < currentClients; i++){
+                if(g_timer_elapsed(cc[i].conn_timer, NULL) > (double)TIMEOUT) {
+                    //closeConnections(fds, &numFds);
+                    close(fds[i].fd);
+                }
+            }
             //close(connection->conn_fd);
             //g_timer_destroy(connection->conn_timer);
             /*
