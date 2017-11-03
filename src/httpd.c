@@ -172,7 +172,7 @@ void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
    // same as get request plus the data in the body of the post request
     char data[512];
     strncpy(data, message, sizeof(data)-1);
-    char *dataInfo = NULL;
+    char *dataInfo;
     dataInfo = strstr(data, "\r\n\r\n");
     printf("%s\n", dataInfo);
 
@@ -264,7 +264,7 @@ int addConn(int connFd, struct pollfd *fds, int numFds) {
         //cc[*numFds].clientSockaddr;
     }
     //ClientCon *cc = g_new0(ClientCon, 1);
-    int addrlen = sizeof(cc->clientSockaddr);
+    //int addrlen = sizeof(cc->clientSockaddr);
     /*getpeername(connFd, (struct sockaddr*)&(cc->clientSockaddr), 
                (socklen_t*)&addrlen);
 
@@ -356,6 +356,7 @@ void service(int sockfd) {
     memset(fds, 0 , sizeof(fds));
     fds[0].fd = sockfd;
     fds[0].events = POLLIN;
+
     while(TRUE) {
         fflush(stdout);
         socklen_t len = (socklen_t) sizeof(client);
@@ -367,12 +368,7 @@ void service(int sockfd) {
         }
         if (rc == 0) {
             printf("poll() timeout. \n");
-            for (int i = 0; i < currentClients; i++){
-                if(g_timer_elapsed(cc[i].conn_timer, NULL) > (double)TIMEOUT) {
-                    //closeConnections(fds, &numFds);
-                    close(fds[i].fd);
-                }
-            }
+            
             //close(connection->conn_fd);
             //g_timer_destroy(connection->conn_timer);
             /*
@@ -412,6 +408,14 @@ void service(int sockfd) {
             }
             else {
                 // todo here if timeout then end connection
+                for (int j = 1; j < currentClients; j++){
+            
+                    if((g_timer_elapsed(cc[j].conn_timer, NULL)*1000 )>= (double)TIMEOUT) {
+                        //closeConnections(fds, &numFds);
+                        shutdown(fds[j].fd, SHUT_RDWR);
+                        close(fds[j].fd);
+                    }
+                }
                 if(fds[i].revents & POLLIN) {
                     //**  This is for an already existing connection  **//
                     rc = handleConn(i, fds, &client, len, &compressArr);
