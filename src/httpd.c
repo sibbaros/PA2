@@ -68,7 +68,6 @@ void service(int sockfd);
 int main(int argc, char *argv[]) {  
     int sockfd = 0, port = 0;
     struct sockaddr_in server;
-
     //**  Checks if we have enough arguments  **//
     port = getArguments(argc, argv);
     //**  Create a socket to recieve incoming connections  **//
@@ -79,7 +78,6 @@ int main(int argc, char *argv[]) {
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     server.sin_port = htons(port);
     printf("Connection with port: %d\n", port);
-    
     //**  Check Binding  **//
     checkBind(sockfd, server);
     //**  Set the listen back log and check if working  **//
