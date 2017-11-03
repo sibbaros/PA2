@@ -1,8 +1,8 @@
 /********************************************************************************/
 /**                                                                            **/
-/** T-409-TSAM-2017: Computer Networks Programming Assignment 2 – httpd Part 2 **/
+/**      T-409-TSAM-2017: Computer Networks - Programming Assignment 1 & 2     **/
 /**          By Alexandra Geirsdóttir & Sigurbjörg Rós Sigurðardóttir          **/
-/**                            November 6 2017                                 **/
+/**                             November 6 2017                                **/
 /**                                                                            **/
 /********************************************************************************/
 
@@ -58,9 +58,11 @@ void logFile(char *clientPort, char *clientIP, char *request,
 int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int *numFds);
 int addConn(int connFd, struct pollfd *fds, int numFds);
-void closeConn(int i, struct pollfd *fds, int *compressArr);
+void closeConn(int i, int *compressArr, struct pollfd *fds);
 int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client, 
                socklen_t len, int *compressArr);
+void checkTimer(int *compressArr, int i, struct pollfd *fds);
+void checkAllTimers(int *compressArr, int currentClients, struct pollfd *fds);
 void service(int sockfd);
 
 int main(int argc, char *argv[]) {  
@@ -242,11 +244,16 @@ void closeConnections(struct pollfd *fds, int *numFds) {
     }
 }
 
-void closeConn(int i, struct pollfd *fds, int *compressArr) {
-    shutdown(fds[i].fd, SHUT_RDWR);
-    close(fds[i].fd);
-    fds[i].fd = -1;
+void closeConn(int i, int *compressArr, struct pollfd *fds) {
+    //printf("Closing connection (fd:%d)\n", cc[i].conn_fd);
+    shutdown(cc[i].conn_fd , SHUT_RDWR);
+    close(cc[i].conn_fd);
+    cc[i].conn_fd = -1;
     *compressArr = 1;
+    g_timer_destroy(cc[i].conn_timer);
+
+    fds[i].revents = 0;
+    close(fds[i].fd);
 }
 
 int addConn(int connFd, struct pollfd *fds, int numFds) {
@@ -260,10 +267,7 @@ int addConn(int connFd, struct pollfd *fds, int numFds) {
     //ClientCon *cc = g_new0(ClientCon, 1);
     //int addrlen = sizeof(cc->clientSockaddr);
     /*getpeername(connFd, (struct sockaddr*)&(cc->clientSockaddr), 
-               (socklen_t*)&addrlen);
-
-    cc->conn_fd = connFd;
-    cc->conn_timer = g_timer_new();*/
+               (socklen_t*)&addrlen);*/
 
     fds[numFds].fd = connFd;
     fds[numFds].events = POLLIN;
@@ -285,14 +289,14 @@ int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client,
 
     if(rc < 0) {
         if(errno != EWOULDBLOCK) {
-            closeConn(i, fds, compressArr);
+            closeConn(i, compressArr, fds);
         }
         return rc;
     }
 
     //**  This is if client closed the connection  **//
     if(rc == 0) {
-        closeConn(i, fds, compressArr);
+        closeConn(i, compressArr, fds);
         return rc;
     }
 
@@ -320,7 +324,7 @@ int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client,
         ifHead(html);
     }
     else {
-        printf("%s requests are unsupported by the server.\n", mType);
+        printf("Request is unsupported by the server.\n");
         ifError(html);
         g_timer_reset(cc[i].conn_timer);
         strncpy(rCode, "Unsupported Request", sizeof(rCode)-1);
@@ -331,16 +335,34 @@ int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client,
 
     if(rc < 0) {
         perror("send() failed");
-        closeConn(i, fds, compressArr);
+        closeConn(i, compressArr, fds);
     }   
 
     return rc;
 }
 
+void checkTimer(int *compressArr, int i, struct pollfd *fds) {
+    //**  30 second timeout window  **//
+    const int TIMEOUT = 4;
+    gdouble elapSec = g_timer_elapsed(cc[i].conn_timer, NULL);
+    if(elapSec >= (double)TIMEOUT) {
+        printf("Closing connection due to timeout\n");
+        closeConn(i, compressArr, fds);
+        printf("Closed connection number %d\n", i);
+    }
+}
+
+void checkAllTimers(int *compressArr, int currentClients, struct pollfd *fds) {
+    for(int i = 1; i < currentClients; i++) {
+        checkTimer(compressArr, i, fds);
+        printf("Closing connection number %d\n", i);
+    }
+}
+
 void service(int sockfd) {
     fflush(stdout);
-    //**  30 second timeout window  **//
-    const int TIMEOUT = 30 * 1000;
+    //**  Checking every second for a connection timeout  **//
+    const int CHECKTIME = 1000;
     //**  Initializing variables  **//
     int  numFds = 1, currentClients = 0, compressArr = 0;;
     struct sockaddr_in client;
@@ -354,67 +376,60 @@ void service(int sockfd) {
     while(TRUE) {
         fflush(stdout);
         socklen_t len = (socklen_t) sizeof(client);
-        int rc = poll(fds, numFds, TIMEOUT);
+        
+        int rc = poll(fds, numFds, CHECKTIME);
+        
         currentClients = numFds;
         if (rc < 0) {
             perror("poll() failed\n");
             break;
         }
         if (rc == 0) {
-            printf("poll() timeout. \n");
-            
-            //close(connection->conn_fd);
-            //g_timer_destroy(connection->conn_timer);
-            /*
-            for(int i = 0; i < currentClients; i++) {
-                close(fds[i].fd);
-                fds[i].fd = -1;
-                compressArr = 1;
-            }*/
+            //printf("poll() timeout. \n");
+            checkAllTimers(&compressArr, currentClients, fds);
+            printf("after checking all\n");
+            continue;
         }
 
+        printf("numFds: %d\n", currentClients);
         for(int i = 0; i < currentClients; i++) {
             fflush(stdout);
+            printf("revents: %d\n", fds[i].revents);
             if(fds[i].revents == 0){
                 continue;
             }
             if(fds[i].revents & POLLHUP) {
                 printf("Closing connection because the device has been disconnected. \n");
-                closeConn(i, fds, &compressArr);
+                closeConn(i, &compressArr, fds);
                 continue;
             }
             if(fds[i].revents & POLLERR) {
                 printf("An error has occurred on the device or stream. \n");
                 break;
             }
+            if(fds[i].revents & POLLNVAL) {
+                printf("POLL INVAL. fd[%d] \n", i);
+                exit(-1);
+            }
 
             //**  This is for a new connection  **//
-            if(fds[i].fd == sockfd) { 
-                if(fds[i].revents & POLLIN) {
-                    int connFd = accept(sockfd, (struct sockaddr *) &client, &len);
-                    if(connFd < 0) 
-                        if(errno != EWOULDBLOCK) 
-                            perror("accept() failed");
-                    fflush(stdout);
-                    //**  Add the new incoming connection to the poll  **//
-                    numFds = addConn(connFd, fds, numFds);
+            if(fds[i].revents & POLLIN) {
+                if(fds[i].fd == sockfd) { 
+                    
+                        int connFd = accept(sockfd, (struct sockaddr *) &client, &len);
+                        if(connFd < 0) 
+                            if(errno != EWOULDBLOCK) 
+                                perror("accept() failed");
+                        fflush(stdout);
+                        //**  Add the new incoming connection to the poll  **//
+                        numFds = addConn(connFd, fds, numFds);
                 } 
-            }
-            else {
-                // todo here if timeout then end connection
-                for (int j = 1; j < currentClients; j++){
-            
-                    if((g_timer_elapsed(cc[j].conn_timer, NULL)*1000 )>= (double)TIMEOUT) {
-                        //closeConnections(fds, &numFds);
-                        shutdown(fds[j].fd, SHUT_RDWR);
-                        close(fds[j].fd);
-                    }
-                }
-                if(fds[i].revents & POLLIN) {
-                    //**  This is for an already existing connection  **//
-                    rc = handleConn(i, fds, &client, len, &compressArr);
-                    if(rc <= 0)
-                        continue;
+                else {
+                    // todo here if timeout then end connection
+                        //**  This is for an already existing connection  **//
+                        rc = handleConn(i, fds, &client, len, &compressArr);
+                        if(rc <= 0)
+                            continue;
                 }
             }
         }
