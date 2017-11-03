@@ -44,8 +44,6 @@ typedef struct Request {
 
 struct ClientCon cc[maxSize];
 
-
-
 int getArguments(int argc, char* argv[]);
 int checkSocket();
 void checkBind(int sockfd, struct sockaddr_in server);
@@ -68,7 +66,6 @@ void service(int sockfd);
 int main(int argc, char *argv[]) {  
     int sockfd = 0, port = 0;
     struct sockaddr_in server;
-
     //**  Checks if we have enough arguments  **//
     port = getArguments(argc, argv);
     //**  Create a socket to recieve incoming connections  **//
@@ -79,7 +76,6 @@ int main(int argc, char *argv[]) {
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     server.sin_port = htons(port);
     printf("Connection with port: %d\n", port);
-    
     //**  Check Binding  **//
     checkBind(sockfd, server);
     //**  Set the listen back log and check if working  **//
@@ -216,7 +212,7 @@ void logFile(char *clientPort, char *clientIP, char *request,
         return exit(-1);
     }
 
-    //**  Prints the information in the file.log  **//
+    //**  Prints the information into file.log  **//
     char time[25];
     strncpy(time, asctime (timeinfo), 23);
     fprintf(f, "%s : %s:%s %s %s : %s\n", time, clientIP, 
@@ -225,8 +221,6 @@ void logFile(char *clientPort, char *clientIP, char *request,
 }
 
 int compress(int *compressArr, struct pollfd *fds, int numFds) {
-    printf("in compressArr\n");
-    fflush(stdout);
     *compressArr = 0;
     for(int i = 0; i < numFds; i++) {
         if(fds[i].fd == -1) {
@@ -284,8 +278,8 @@ int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client,
     /*
     Request request;
     init_Request(&request);
-    GString *response = g_string_sized_new(1024);
-*/
+    GString *response = g_string_sized_new(1024);*/
+
     int rc = recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
              (struct sockaddr*)&client, &len);
 
