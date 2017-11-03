@@ -44,8 +44,6 @@ typedef struct Request {
 
 struct ClientCon cc[maxSize];
 
-
-
 int getArguments(int argc, char* argv[]);
 int checkSocket();
 void checkBind(int sockfd, struct sockaddr_in server);
@@ -214,7 +212,7 @@ void logFile(char *clientPort, char *clientIP, char *request,
         return exit(-1);
     }
 
-    //**  Prints the information in the file.log  **//
+    //**  Prints the information into file.log  **//
     char time[25];
     strncpy(time, asctime (timeinfo), 23);
     fprintf(f, "%s : %s:%s %s %s : %s\n", time, clientIP, 
