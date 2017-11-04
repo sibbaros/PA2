@@ -56,7 +56,7 @@ void ifError(char *html);
 void logFile(char *clientPort, char *clientIP, char *request, 
              char *requestURL, char *rCode);
 int compress(int *compressArr, struct pollfd *fds, int numFds);
-void closeConnections(struct pollfd *fds, int *numFds);
+void closeConnections(struct pollfd *fds, int *numFds, int *compressArr);
 int addConn(int connFd, struct pollfd *fds, int numFds);
 void closeConn(int i, int *compressArr, struct pollfd *fds);
 int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client, 
@@ -224,9 +224,9 @@ void logFile(char *clientPort, char *clientIP, char *request,
 
 int compress(int *compressArr, struct pollfd *fds, int numFds) {
     *compressArr = 0;
-    for(int i = 0; i < numFds; i++) {
+    for(int i = 1; i < numFds; i++) {
         if(fds[i].fd == -1) {
-            for(int j = 0; j < numFds; j++) {
+            for(int j = 1; j < numFds; j++) {
                 fds[i].fd = fds[j+1].fd;
             }
             
@@ -236,11 +236,11 @@ int compress(int *compressArr, struct pollfd *fds, int numFds) {
     return numFds;
 }
 
-void closeConnections(struct pollfd *fds, int *numFds) {
+void closeConnections(struct pollfd *fds, int *numFds, int *compressArr) {
     fflush(stdout);
     for (int i = 0; i < *numFds; i++) {
         if(fds[i].fd >= 0)
-            close(fds[i].fd);
+            closeConn(i, compressArr, fds);
     }
 }
 
@@ -252,8 +252,9 @@ void closeConn(int i, int *compressArr, struct pollfd *fds) {
     *compressArr = 1;
     g_timer_destroy(cc[i].conn_timer);
 
-    fds[i].revents = 0;
     close(fds[i].fd);
+    fds[i].revents = 0;
+    fds[i].fd = -1;
 }
 
 int addConn(int connFd, struct pollfd *fds, int numFds) {
@@ -361,7 +362,7 @@ void checkAllTimers(int *compressArr, int currentClients, struct pollfd *fds) {
 
 void service(int sockfd) {
     fflush(stdout);
-    //**  Checking every second for a connection timeout  **//
+    //**  Check every second for a timeout connection  **//
     const int CHECKTIME = 1000;
     //**  Initializing variables  **//
     int  numFds = 1, currentClients = 0, compressArr = 0;;
@@ -385,7 +386,6 @@ void service(int sockfd) {
             break;
         }
         if (rc == 0) {
-            //printf("poll() timeout. \n");
             checkAllTimers(&compressArr, currentClients, fds);
             printf("after checking all\n");
             continue;
@@ -426,10 +426,10 @@ void service(int sockfd) {
                 } 
                 else {
                     // todo here if timeout then end connection
-                        //**  This is for an already existing connection  **//
-                        rc = handleConn(i, fds, &client, len, &compressArr);
-                        if(rc <= 0)
-                            continue;
+                    //**  This is for an already existing connection  **//
+                    rc = handleConn(i, fds, &client, len, &compressArr);
+                    if(rc <= 0)
+                        continue;
                 }
             }
         }
@@ -440,5 +440,5 @@ void service(int sockfd) {
     }
 
     //**  Closing all sockets that are open  **//
-    closeConnections(fds, &numFds);
+    closeConnections(fds, &numFds, &compressArr);
 }
