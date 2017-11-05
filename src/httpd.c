@@ -39,6 +39,7 @@ typedef struct Request {
     GString *path;
     GString *mBody;
     bool closeCon;
+    //GHashTable* headers;
 }Request;
 
 struct ClientCon cc[maxSize];
@@ -57,18 +58,12 @@ void logFile(char *clientPort, char *clientIP, char *request,
 int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int *numFds, int *compressArr);
 int addConn(int connFd, struct pollfd *fds, int numFds);
-<<<<<<< HEAD
-void getDateAndTime(char *dateAndTime);
-void closeConn(int i, struct pollfd *fds, int *compressArr);
-void handleConn(int numFds, int i, struct pollfd *fds, int *compressArr);
-bool recvMsg(int connFd, GString *msg);
-=======
 void closeConn(int i, int *compressArr, struct pollfd *fds);
-int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client, 
-               socklen_t len, int *compressArr);
+void handleConn(int connFd, int i, struct pollfd *fds, int *compressArr);
 void checkTimer(int *compressArr, int i, struct pollfd *fds);
 void checkAllTimers(int *compressArr, int currentClients, struct pollfd *fds);
->>>>>>> 56ccb46ff3cef0cbf1d9311df46e303f7851ef1f
+bool recvMsg(int connFd, GString *msg);
+void getDateAndTime(char* dateAndTime);
 void service(int sockfd);
 
 int main(int argc, char *argv[]) {  
@@ -206,6 +201,7 @@ void ifError(char *html) {
 //**  Logs the information in to file.log  **//
 void logFile(char *clientPort, char *clientIP, char *request, 
              char *requestURL, char *rCode) {
+    fflush(stdout);
     time_t currenttime;
     struct tm *timeinfo;
     time (&currenttime);
@@ -213,11 +209,9 @@ void logFile(char *clientPort, char *clientIP, char *request,
     FILE *f;
     //**  Opens the file or creates it if it does not exist already  **//
     f = fopen("./src/file.log", "a" );
-    fflush(stdout);
 
     if (f == NULL) {
         perror("Opening log file failure\n");
-        fflush(stdout);
         return exit(-1);
     }
 
@@ -245,7 +239,7 @@ int compress(int *compressArr, struct pollfd *fds, int numFds) {
 
 void closeConnections(struct pollfd *fds, int *numFds, int *compressArr) {
     fflush(stdout);
-    for (int i = 0; i < *numFds; i++) {
+    for (int i = 1; i < *numFds; i++) {
         if(fds[i].fd >= 0)
             closeConn(i, compressArr, fds);
     }
@@ -262,21 +256,21 @@ void closeConn(int i, int *compressArr, struct pollfd *fds) {
     fds[i].revents = 0;
     fds[i].fd = -1;
     g_timer_destroy(cc[i].conn_timer);
-    g_free(cc[i].conn_timer);
+    cc[i].conn_timer = 0;
 }
 
 int addConn(int connFd, struct pollfd *fds, int numFds) {
-    if(numFds < maxSize){
-        cc[numFds] = *g_new0(ClientCon, 1);
-        cc[numFds].conn_fd = connFd;
-        cc[numFds].conn_timer = g_timer_new();
-        g_timer_start(cc[numFds].conn_timer);
-        //cc[*numFds].clientSockaddr;
+    if(!(numFds < maxSize)){
+        printf("Unable to add client because of max size\n");
+        return numFds;
     }
-    //ClientCon *cc = g_new0(ClientCon, 1);
     //int addrlen = sizeof(cc->clientSockaddr);
     /*getpeername(connFd, (struct sockaddr*)&(cc->clientSockaddr), 
                (socklen_t*)&addrlen);*/
+    cc[numFds] = *g_new0(ClientCon, 1);
+    cc[numFds].conn_fd = connFd;
+    cc[numFds].conn_timer = g_timer_new();
+    g_timer_start(cc[numFds].conn_timer);
 
     fds[numFds].fd = connFd;
     fds[numFds].events = POLLIN;
@@ -284,47 +278,45 @@ int addConn(int connFd, struct pollfd *fds, int numFds) {
     return numFds;
 }
 
-void getDateAndTime(char *dateAndTime) {
-    time_t currentTime = time(NULL);
-    struct tm *timeInfo = gmtime(&currentTime);
-    strftime(dateAndTime, sizeof dateAndTime, "%a, %d %b %Y %H:%M:%S %Z", timeInfo);
-}
-
-<<<<<<< HEAD
-void handleConn(int numFds, int i, struct pollfd *fds, int *compressArr) {
+void handleConn(int connFd, int i, struct pollfd *fds, int *compressArr) {
+    /*char request[512], mType[5], rCode[8], *requestURL, clientIP[500], 
+         clientPort[32], html[500], message[512];*/
+    printf("in handle conn\n");
     Request req;
     reqInit(&req);
     GString *response = g_string_sized_new(1024);
     GString *recvdMsg = g_string_sized_new(1024);
     // message was not received or has length 0
-    if (!recvMsg(cc[numFds].conn_fd, recvdMsg)) {
+    printf("before if\n");
+    if (!recvMsg(connFd, recvdMsg)) {
+        printf("in if\n");
         req.closeCon = true;
         g_string_free(recvdMsg, TRUE);
         g_string_free(response, TRUE);
         closeConn(i, fds, compressArr);
-=======
-    if(rc < 0) {
-        if(errno != EWOULDBLOCK) {
-            closeConn(i, compressArr, fds);
-        }
-        return rc;
->>>>>>> 56ccb46ff3cef0cbf1d9311df46e303f7851ef1f
     }
+    printf("after if\n");
     char dateAndTime[512];
     getDateAndTime(dateAndTime);
     g_string_append(response, "HTTP/1.1 200 OK\r\n");
     g_string_append(response, "Content-Type: text/html; charset=utf-8\r\n");
     g_string_append_printf(response, "Date: %s\r\n", dateAndTime);
     printf("%s\n", response->str);
+
+
+    /*int rc = 0;recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
+             (struct sockaddr*)&client, &len);
+
+    if(rc < 0) {
+        if(errno != EWOULDBLOCK) {
+            closeConn(i, fds, compressArr);
+        }
+        return rc;
+    }*/
     
     //**  This is if client closed the connection  **//
-<<<<<<< HEAD
     /*if(rc == 0) {
         closeConn(i, fds, compressArr);
-=======
-    if(rc == 0) {
-        closeConn(i, compressArr, fds);
->>>>>>> 56ccb46ff3cef0cbf1d9311df46e303f7851ef1f
         return rc;
     }*/
 
@@ -338,23 +330,19 @@ void handleConn(int numFds, int i, struct pollfd *fds, int *compressArr) {
 
     if(!(strcmp(mType, "GET "))) {
         printf("Get request\n");
-        g_timer_reset(cc[i].conn_timer);
         ifGet(html, clientPort, clientIP, requestURL);
     }
     else if(!(strcmp(mType, "POST"))) {
         printf("Post request\n");
-        g_timer_reset(cc[i].conn_timer);
         ifPost(message, html, clientPort, clientIP);
     }
     else if(!(strcmp(mType, "HEAD"))) {
         printf("Head request\n");
-        g_timer_reset(cc[i].conn_timer);
         ifHead(html);
     }
     else {
-        printf("Request is unsupported by the server.\n");
+        printf("%s requests are unsupported by the server.\n", mType);
         ifError(html);
-        g_timer_reset(cc[i].conn_timer);
         strncpy(rCode, "Unsupported Request", sizeof(rCode)-1);
     }
 
@@ -363,35 +351,8 @@ void handleConn(int numFds, int i, struct pollfd *fds, int *compressArr) {
 
     if(rc < 0) {
         perror("send() failed");
-<<<<<<< HEAD
         closeConn(i, fds, compressArr);
     }
-}
-
-bool recvMsg(int connFd, GString *msg){
-    const ssize_t BUFFSIZE = 1024;
-    ssize_t n = 0;
-    char buffer[BUFFSIZE];
-    g_string_truncate (msg, 0);
-=======
-        closeConn(i, compressArr, fds);
-    }   
->>>>>>> 56ccb46ff3cef0cbf1d9311df46e303f7851ef1f
-
-    do {
-        n = recv(connFd, buffer, BUFFSIZE - 1, 0);
-        if (n == -1) {
-            perror("recv error");
-        }
-        else if (n == 0) {
-            printf("Client was disconnected.\n");
-            return false;
-        }
-        buffer[n] = '\0';
-        g_string_append_len(msg, buffer, n);
-    }while(n > 0 && n == BUFFSIZE - 1);
-
-    return true;
 }
 
 void checkTimer(int *compressArr, int i, struct pollfd *fds) {
@@ -409,11 +370,38 @@ void checkAllTimers(int *compressArr, int currentClients, struct pollfd *fds) {
         checkTimer(compressArr, i, fds);
     }
 }
+bool recvMsg(int connFd, GString *msg){
+    const ssize_t BUFFSIZE = 1024;
+    ssize_t n = 0;
+    char buffer[BUFFSIZE];
+    g_string_truncate (msg, 0);
+
+    do {
+        n = recv(connFd, buffer, BUFFSIZE - 1, 0);
+        if (n == -1) {
+            perror("recv error");
+        }
+        else if (n == 0) {
+            printf("Client was disconnected.\n");
+            return false;
+        }
+        buffer[n] = '\0';
+        g_string_append_len(msg, buffer, n);
+    }while(n > 0 && n == BUFFSIZE - 1);
+
+    return true;
+}
+
+void getDateAndTime(char* dateAndTime) {
+    time_t currentTime = time(NULL);
+    struct tm *timeInfo = gmtime(&currentTime);
+    strftime(dateAndTime, sizeof dateAndTime, "%a, %d %b %Y %H:%M:%S %Z", timeInfo);
+}
 
 void service(int sockfd) {
-    fflush(stdout);
     //**  Check every second for a timeout connection  **//
     const int CHECKTIME = 1000;
+
     //**  Initializing variables  **//
     int  numFds = 1, currentClients = 0, compressArr = 0;;
     struct sockaddr_in client;
@@ -436,29 +424,12 @@ void service(int sockfd) {
             break;
         }
         if (rc == 0) {
-<<<<<<< HEAD
-            printf("poll() timeout. \n");
-            /*for (int i = 0; i < currentClients; i++){
-                if(g_timer_elapsed(cc[i].conn_timer, NULL) > (double)TIMEOUT) {
-                    //closeConnections(fds, &numFds);
-                    close(fds[i].fd);
-                }
-            }*/
-            //close(connection->conn_fd);
-            //g_timer_destroy(connection->conn_timer);
-            /*
-            for(int i = 0; i < currentClients; i++) {
-                close(fds[i].fd);
-                fds[i].fd = -1;
-                compressArr = 1;
-            }*/
-=======
             checkAllTimers(&compressArr, currentClients, fds);
             continue;
->>>>>>> 56ccb46ff3cef0cbf1d9311df46e303f7851ef1f
         }
 
         for(int i = 0; i < currentClients; i++) {
+            fflush(stdout);
             if(fds[i].revents == 0){
                 continue;
             }
@@ -476,10 +447,9 @@ void service(int sockfd) {
                 exit(-1);
             }
 
-            //**  This is for a new connection  **//
-<<<<<<< HEAD
-            if(fds[i].fd == sockfd) {
-                if(fds[i].revents & POLLIN) {
+            if(fds[i].revents & POLLIN) {
+                //**  This is for a new connection  **//
+                if(fds[i].fd == sockfd) { 
                     int connFd = accept(sockfd, (struct sockaddr *) &client, &len);
                     if(connFd < 0) 
                         if(errno != EWOULDBLOCK) 
@@ -487,28 +457,10 @@ void service(int sockfd) {
                     fflush(stdout);
                     //**  Add the new incoming connection to the poll  **//
                     numFds = addConn(connFd, fds, numFds);
-                }
-            }
-            else {
-                // todo here if timeout then end connection
-                if(fds[i].revents & POLLIN) {
-=======
-            if(fds[i].revents & POLLIN) {
-                if(fds[i].fd == sockfd) { 
-                    
-                        int connFd = accept(sockfd, (struct sockaddr *) &client, &len);
-                        if(connFd < 0) 
-                            if(errno != EWOULDBLOCK) 
-                                perror("accept() failed");
-                        fflush(stdout);
-                        //**  Add the new incoming connection to the poll  **//
-                        numFds = addConn(connFd, fds, numFds);
                 } 
                 else {
-                    // todo here if timeout then end connection
->>>>>>> 56ccb46ff3cef0cbf1d9311df46e303f7851ef1f
                     //**  This is for an already existing connection  **//
-                    handleConn(numFds, i, fds, &compressArr);
+                    rc = handleConn(i, fds, &client, len, &compressArr);
                     if(rc <= 0)
                         continue;
                 }
