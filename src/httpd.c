@@ -250,11 +250,12 @@ void closeConn(int i, int *compressArr, struct pollfd *fds) {
     close(cc[i].conn_fd);
     cc[i].conn_fd = -1;
     *compressArr = 1;
-    g_timer_destroy(cc[i].conn_timer);
 
     close(fds[i].fd);
     fds[i].revents = 0;
     fds[i].fd = -1;
+    g_timer_destroy(cc[i].conn_timer);
+    g_free(cc[i].conn_timer);
 }
 
 int addConn(int connFd, struct pollfd *fds, int numFds) {
@@ -344,19 +345,17 @@ int handleConn(int i, struct pollfd *fds, struct sockaddr_in *client,
 
 void checkTimer(int *compressArr, int i, struct pollfd *fds) {
     //**  30 second timeout window  **//
-    const int TIMEOUT = 4;
+    const int TIMEOUT = 5;
     gdouble elapSec = g_timer_elapsed(cc[i].conn_timer, NULL);
     if(elapSec >= (double)TIMEOUT) {
         printf("Closing connection due to timeout\n");
         closeConn(i, compressArr, fds);
-        printf("Closed connection number %d\n", i);
     }
 }
 
 void checkAllTimers(int *compressArr, int currentClients, struct pollfd *fds) {
     for(int i = 1; i < currentClients; i++) {
         checkTimer(compressArr, i, fds);
-        printf("Closing connection number %d\n", i);
     }
 }
 
@@ -387,14 +386,11 @@ void service(int sockfd) {
         }
         if (rc == 0) {
             checkAllTimers(&compressArr, currentClients, fds);
-            printf("after checking all\n");
             continue;
         }
 
-        printf("numFds: %d\n", currentClients);
         for(int i = 0; i < currentClients; i++) {
             fflush(stdout);
-            printf("revents: %d\n", fds[i].revents);
             if(fds[i].revents == 0){
                 continue;
             }
