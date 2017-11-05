@@ -240,7 +240,7 @@ int compress(int *compressArr, struct pollfd *fds, int numFds) {
 
 void closeConnections(struct pollfd *fds, int *numFds, int *compressArr) {
     fflush(stdout);
-    for (int i = 0; i < *numFds; i++) {
+    for (int i = 1; i < *numFds; i++) {
         if(fds[i].fd >= 0)
             closeConn(i, compressArr, fds);
     }
@@ -257,7 +257,7 @@ void closeConn(int i, int *compressArr, struct pollfd *fds) {
     fds[i].revents = 0;
     fds[i].fd = -1;
     g_timer_destroy(cc[i].conn_timer);
-    g_free(cc[i].conn_timer);
+    cc[i].conn_timer = 0;
 }
 
 int addConn(int connFd, struct pollfd *fds, int numFds) {
@@ -389,9 +389,9 @@ void getDateAndTime(char* dateAndTime) {
 }
 
 void service(int sockfd) {
-    fflush(stdout);
     //**  Check every second for a timeout connection  **//
     const int CHECKTIME = 1000;
+
     //**  Initializing variables  **//
     int  numFds = 1, currentClients = 0, compressArr = 0;;
     struct sockaddr_in client;
