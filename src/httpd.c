@@ -24,7 +24,7 @@
 #include <errno.h>
 #include <glib.h>
 
-typedef enum httpMeth {GET, HEAD, POST, UNKNOWN} httpMeth;
+typedef enum httpMeth {GET, HEAD, POST, UNKN} httpMeth;
 const char *const https[] = {"GET", "HEAD", "POST", "UNKNOWN"};
 const int maxSize = 100;
 //**  Structs  **//
@@ -59,6 +59,8 @@ int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int *numFds, int *compressArr);
 int addConn(int connFd, struct pollfd *fds, int numFds);
 void closeConn(int i, int *compressArr, struct pollfd *fds, int currentClients);
+void parse_request(GString *rec, Request *req, int i, struct pollfd *fds, 
+                   int *compressArr, int currentClients);
 GString *createHtml(Request *req, ClientCon con);
 void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients);
 void checkTimer(int *compressArr, int i, struct pollfd *fds, int currentClients);
@@ -136,7 +138,7 @@ void reqInit(Request *r) {
     r->path = g_string_new(NULL);
     r->mBody = g_string_new(NULL);
     r->closeCon = false;
-    r->method = UNKNOWN;
+    r->method = UNKN;
 }    
 
 //**  Called if a Head request is called  **//
@@ -283,9 +285,28 @@ int addConn(int connFd, struct pollfd *fds, int numFds) {
     return numFds;
 }
 
+void parse_request(GString *rec, Request *req, int i, struct pollfd *fds, 
+                   int *compressArr, int currentClients) {
+    if (g_str_has_prefix(rec->str, "HEAD")) {
+        req->method = HEAD;
+    }
+    else if (g_str_has_prefix(rec->str, "GET")) {
+        req->method = GET;
+    }
+    else if (g_str_has_prefix(rec->str, "POST")) {
+        req->method = POST;
+    }
+    else {
+        req->method = UNKN;
+        printf("Closing connection because of an unknown method.\n");
+        closeConn(i, compressArr, fds, currentClients);
+    }
+}
+
 GString *createHtml(Request *req, ClientCon con) {
     GString *html = g_string_new("\n<!DOCTYPE>\n<html>\r\n    <head>\n        "
-    "<meta charset=\"utf-8\">\r\n        <title>\n        </title>\n    </head>\n </html>\r\n");
+    "<meta charset=\"utf-8\">\r\n        <title>\n        </title>\n    "
+    "</head>\n </html>\r\n");
     return html;
 }
 
@@ -303,10 +324,13 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
         g_string_free(response, TRUE);
         closeConn(i, compressArr, fds, currentClients);
     }
+
+    parse_request(recvdMsg, &req, i, fds, compressArr, currentClients);
+
     char dateAndTime[512];
     getDateAndTime(dateAndTime);
-    g_string_append(response, "HTTP/1.1 200 OK\r\n");
-    g_string_append(response, "Content-Type: text/html; charset=utf-8\r\n");
+    g_string_append(response, "HTTP/1.1 200 OK\r\nContent-Type: text/html; "
+                              "charset=utf-8\r\n");
     g_string_append_printf(response, "Date: %s\r\n", dateAndTime);
     //printf("%s\n", response->str);
 
@@ -323,10 +347,8 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
     GString *msg = createHtml(&req, cc[i]);
     g_string_append_printf(response, "Content-Length: %lu\r\n", msg->len);
     g_string_append(response, "\r\n");
-    g_string_append(response, msg->str);
-    /*if (req.meth != HEAD) {
-        g_string_append(response, msg->str); // appending message body to the end of response
-    }*/
+    if(!(req.method == HEAD))
+        g_string_append(response, msg->str);
     g_string_free(msg, TRUE);
 
 
