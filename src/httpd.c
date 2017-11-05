@@ -295,7 +295,7 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
     GString *recvdMsg = g_string_sized_new(1024);
     //**  Message was not received or has length 0  **//
     if (!recvMsg(cc[i].conn_fd, recvdMsg)) {
-        req.closeCon = true;
+        req.closeCon = TRUE;
         g_string_free(recvdMsg, TRUE);
         g_string_free(response, TRUE);
         closeConn(i, compressArr, fds, currentClients);
@@ -305,7 +305,17 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
     g_string_append(response, "HTTP/1.1 200 OK\r\n");
     g_string_append(response, "Content-Type: text/html; charset=utf-8\r\n");
     g_string_append_printf(response, "Date: %s\r\n", dateAndTime);
-    printf("%s\n", response->str);
+    //printf("%s\n", response->str);
+
+    if(!req.closeCon) {
+        g_timer_start(cc[i].conn_timer);
+        //**  Persistent unless declared otherwise  **//
+        g_string_append(response, "Connection: keep-alive\r\n");
+        g_string_append_printf(response, "Keep-Alive: timeout=30s\r\n");
+    }
+    else {
+        g_string_append(response, "Connection: close\r\n");
+    }
 
 
     /*int rc = 0;recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
