@@ -139,16 +139,6 @@ void reqInit(Request *r) {
     r->mBody = g_string_new(NULL);
     r->closeCon = false;
     r->method = UNKN;
-}    
-
-//**  Called if a Head request is called  **//
-void ifHead(char *html) {
-    fflush(stdout);
-    html[0] = '\0';
-    strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n" //Connection: keep-alive //Content length  lengdin af html skránni
-    "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
-    "    </head>\n </html>\r\n");
-
 }
 
 //**  Called if a Get request is called  **//
@@ -272,12 +262,13 @@ int addConn(int connFd, struct pollfd *fds, int numFds) {
         printf("Unable to add client because of max size\n");
         return numFds;
     }
-    //int addrlen = sizeof(cc->clientSockaddr);
-    /*getpeername(connFd, (struct sockaddr*)&(cc->clientSockaddr), 
-               (socklen_t*)&addrlen);*/
     cc[numFds] = *g_new0(ClientCon, 1);
     cc[numFds].conn_fd = connFd;
     cc[numFds].conn_timer = g_timer_new();
+
+    int addrlen = sizeof(cc[numFds].clientSockaddr);
+    getpeername(connFd, (struct sockaddr*)&(cc[numFds].clientSockaddr), 
+               (socklen_t*)&addrlen);
 
     fds[numFds].fd = connFd;
     fds[numFds].events = POLLIN;
@@ -305,8 +296,12 @@ void parse_request(GString *rec, Request *req, int i, struct pollfd *fds,
 
 GString *createHtml(Request *req, ClientCon con) {
     GString *html = g_string_new("\n<!DOCTYPE>\n<html>\r\n    <head>\n        "
-    "<meta charset=\"utf-8\">\r\n        <title>\n        </title>\n    "
-    "</head>\n </html>\r\n");
+    "<meta charset=\"utf-8\">\r\n        <title>\n            "
+    "T-409-TSAM-2017: Programming Assignment\n        </title>\n    "
+    "</head>\n    <body>\n        <h2>\n");
+    g_string_append_printf(html, "            <p>http://%s %s:%d</p>", req->host->str,
+                inet_ntoa(con.clientSockaddr.sin_addr), ntohs(con.clientSockaddr.sin_port));
+    g_string_append(html,"\n        </h2>\n    </body>\n</html>\r\n");
     return html;
 }
 
@@ -329,16 +324,19 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
 
     char dateAndTime[512];
     getDateAndTime(dateAndTime);
-    g_string_append(response, "HTTP/1.1 200 OK\r\nContent-Type: text/html; "
-                              "charset=utf-8\r\n");
+    g_string_append(response, "HTTP/1.1 ");
+    if(req.method == UNKN)
+        g_string_append(response, "501 NOTOK");
+    else
+        g_string_append(response, "200 OK");
+    g_string_append(response, "\r\nContent-Type: text/html; charset=utf-8\r\n");
     g_string_append_printf(response, "Date: %s\r\n", dateAndTime);
-    //printf("%s\n", response->str);
 
     if(!req.closeCon) {
         g_timer_start(cc[i].conn_timer);
         //**  Persistent unless declared otherwise  **//
         g_string_append(response, "Connection: keep-alive\r\n");
-        g_string_append_printf(response, "Keep-Alive: timeout=30s\r\n");
+        g_string_append(response, "Keep-Alive: timeout=30s\r\n");
     }
     else {
         g_string_append(response, "Connection: close\r\n");
@@ -350,23 +348,6 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
     if(!(req.method == HEAD))
         g_string_append(response, msg->str);
     g_string_free(msg, TRUE);
-
-
-    /*int rc = 0;recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
-             (struct sockaddr*)&client, &len);
-
-    if(rc < 0) {
-        if(errno != EWOULDBLOCK) {
-            closeConn(i, fds, compressArr);
-        }
-        return rc;
-    }*/
-    
-    //**  This is if client closed the connection  **//
-    /*if(rc == 0) {
-        closeConn(i, fds, compressArr);
-        return rc;
-    }*/
 
     //**  This is if data is recieved  **//
     /*strncpy(request, message, sizeof(request)-1);
@@ -383,10 +364,6 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
     else if(!(strcmp(mType, "POST"))) {
         printf("Post request\n");
         ifPost(message, html, clientPort, clientIP);
-    }
-    else if(!(strcmp(mType, "HEAD"))) {
-        printf("Head request\n");
-        ifHead(html);
     }
     else {
         printf("%s requests are unsupported by the server.\n", mType);
