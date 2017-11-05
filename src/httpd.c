@@ -289,21 +289,17 @@ int addConn(int connFd, struct pollfd *fds, int numFds) {
 void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients) {
     /*char request[512], mType[5], rCode[8], *requestURL, clientIP[500], 
          clientPort[32], html[500], message[512];*/
-    printf("in handle conn\n");
     Request req;
     reqInit(&req);
     GString *response = g_string_sized_new(1024);
     GString *recvdMsg = g_string_sized_new(1024);
-    // message was not received or has length 0
-    printf("before if\n");
+    //**  Message was not received or has length 0  **//
     if (!recvMsg(cc[i].conn_fd, recvdMsg)) {
-        printf("in if\n");
         req.closeCon = true;
         g_string_free(recvdMsg, TRUE);
         g_string_free(response, TRUE);
         closeConn(i, compressArr, fds, currentClients);
     }
-    printf("after if\n");
     char dateAndTime[512];
     getDateAndTime(dateAndTime);
     g_string_append(response, "HTTP/1.1 200 OK\r\n");
