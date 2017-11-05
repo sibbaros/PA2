@@ -59,6 +59,7 @@ int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int *numFds, int *compressArr);
 int addConn(int connFd, struct pollfd *fds, int numFds);
 void closeConn(int i, int *compressArr, struct pollfd *fds, int currentClients);
+GString *createHtml(Request *req, ClientCon con);
 void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients);
 void checkTimer(int *compressArr, int i, struct pollfd *fds, int currentClients);
 void checkAllTimers(int *compressArr, int currentClients, struct pollfd *fds);
@@ -247,10 +248,6 @@ void closeConnections(struct pollfd *fds, int *numFds, int *compressArr) {
 }
 
 void closeConn(int i, int *compressArr, struct pollfd *fds, int currentClients) {
-    //printf("Closing connection (fd:%d)\n", cc[i].conn_fd);
-    
-    //g_timer_start(cc[i].conn_timer);
-    //g_timer_stop(cc[i].conn_timer);
     g_timer_destroy(cc[i].conn_timer);
     shutdown(cc[i].conn_fd , SHUT_RDWR);
     close(cc[i].conn_fd);
@@ -286,6 +283,12 @@ int addConn(int connFd, struct pollfd *fds, int numFds) {
     return numFds;
 }
 
+GString *createHtml(Request *req, ClientCon con) {
+    GString *html = g_string_new("\n<!DOCTYPE>\n<html>\r\n    <head>\n        "
+    "<meta charset=\"utf-8\">\r\n        <title>\n        </title>\n    </head>\n </html>\r\n");
+    return html;
+}
+
 void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients) {
     /*char request[512], mType[5], rCode[8], *requestURL, clientIP[500], 
          clientPort[32], html[500], message[512];*/
@@ -316,6 +319,15 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
     else {
         g_string_append(response, "Connection: close\r\n");
     }
+
+    GString *msg = createHtml(&req, cc[i]);
+    g_string_append_printf(response, "Content-Length: %lu\r\n", msg->len);
+    g_string_append(response, "\r\n");
+    g_string_append(response, msg->str);
+    /*if (req.meth != HEAD) {
+        g_string_append(response, msg->str); // appending message body to the end of response
+    }*/
+    g_string_free(msg, TRUE);
 
 
     /*int rc = 0;recvfrom(fds[i].fd, &message, sizeof(message) - 1, 0, 
