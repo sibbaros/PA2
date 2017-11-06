@@ -226,8 +226,7 @@ void closeConn(int i, int *compressArr, struct pollfd *fds, int currentClients) 
     }
 }
 
-void parse(GString *rec, Request *req/*, int i, struct pollfd *fds, 
-                   int *compressArr, int currentClients*/) {
+void parse(GString *rec, Request *req) {
     if (g_str_has_prefix(rec->str, "HEAD")) {
         req->method = HEAD;
     }
@@ -242,7 +241,8 @@ void parse(GString *rec, Request *req/*, int i, struct pollfd *fds,
     }
 
     gchar *body = g_strstr_len(rec->str, rec->len, "\r\n\r\n");
-    g_string_assign(req->mBody, body);
+    if(body != NULL)
+        g_string_assign(req->mBody, body);
 }
 
 GString *createHtml(Request *req, ClientCon con) {
