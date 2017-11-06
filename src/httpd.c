@@ -49,8 +49,7 @@ void checkBind(int sockfd, struct sockaddr_in server);
 void checkListen(int sockfd);
 void reqInit(Request *r);
 void destroyReq(Request *req);
-void logFile(int i, char request, 
-             char requestURL, char *rCode);
+void logFile(int i, Request *req);
 int compress(int *compressArr, struct pollfd *fds, int numFds);
 int addConn(int connFd, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int *numFds, int *compressArr);
@@ -142,10 +141,15 @@ void destroyReq(Request *req) {
 }
 
 //**  Logs the information in to file.log  **//
-void logFile(int i, char request, char requestURL, char *rCode) {
+void logFile(int i, Request *req) {
 
-    char *clientPort = ntohs(cc[i].clientSockaddr.sin_port);
+    char clientPort = ntohs(cc[i].clientSockaddr.sin_port);
     char *clientIP = inet_ntoa(cc[i].clientSockaddr.sin_addr);
+    char rCode[5];
+    if(req->method == UNKN)
+        strncpy(rCode, "501", sizeof(rCode)-1);
+    else
+        strncpy(rCode, "200", sizeof(rCode)-1);
 
     fflush(stdout);
     time_t currenttime;
@@ -164,9 +168,9 @@ void logFile(int i, char request, char requestURL, char *rCode) {
 
     //**  Prints the information into file.log  **//
     char time[25];
-    strncpy(time, asctime (timeinfo), 23);
-    fprintf(f, "%s : %s:%s %c %c : %c\n", time, clientIP, 
-            clientPort, request, requestURL, rCode);
+    strncpy(time, asctime (timeinfo), sizeof(time) - 1);
+    fprintf(f, "%s : %s:%c %c %s : %c\n", time, clientIP, 
+            clientPort, req->method, req->host->str, *rCode);
     fclose(f);
 }
 
@@ -335,7 +339,7 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
         g_string_append(response, msg->str);
     g_string_free(msg, TRUE);
 
-    logFile(i, req.method, req.host->str, &response);
+    logFile(i, &req);
     int rc = send(fds[i].fd, response->str, response->len, 0);
 
     if(req.method == UNKN){
