@@ -27,6 +27,7 @@
 typedef enum httpMeth {GET, HEAD, POST, UNKN} httpMeth;
 const char *const https[] = {"GET", "HEAD", "POST", "UNKNOWN"};
 const int maxSize = 100;
+
 //**  Structs  **//
 typedef struct ClientCon {
     int conn_fd;
@@ -39,7 +40,6 @@ typedef struct Request {
     GString *path;
     GString *mBody;
     bool closeCon;
-    //GHashTable* headers;
 }Request;
 
 struct ClientCon cc[maxSize];
@@ -238,6 +238,9 @@ void parse(GString *rec, Request *req/*, int i, struct pollfd *fds,
     else {
         req->method = UNKN;
     }
+
+    gchar *body = g_strstr_len(rec->str, rec->len, "\r\n\r\n");
+    g_string_assign(req->mBody, body);
 }
 
 GString *createHtml(Request *req, ClientCon con) {
@@ -248,6 +251,9 @@ GString *createHtml(Request *req, ClientCon con) {
     g_string_append_printf(html, "            http://%s %s:%d", req->host->str,
                 inet_ntoa(con.clientSockaddr.sin_addr), ntohs(con.clientSockaddr.sin_port));
     g_string_append(html,"\n        </h2>\n    </body>\n</html>\r\n");
+
+    if(req->method == POST)
+        g_string_append(html, req->mBody->str);
     return html;
 }
 
@@ -290,7 +296,6 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
 
     GString *msg = createHtml(&req, cc[i]);
     g_string_append_printf(response, "Content-Length: %lu\r\n", msg->len);
-    g_string_append(response, "\r\n");
     if(!(req.method == HEAD || req.method == UNKN))
         g_string_append(response, msg->str);
     g_string_free(msg, TRUE);
