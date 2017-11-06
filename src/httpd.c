@@ -364,7 +364,6 @@ void checkTimer(int *compressArr, int i, struct pollfd *fds, int currentClients)
         return;
     gdouble elapSec = g_timer_elapsed(cc[i].conn_timer, NULL);
     if(g_timer_elapsed(cc[i].conn_timer, NULL)){
-        printf("elapSec:%f\n", elapSec);
         if(elapSec >= (double)TIMEOUT) {
             printf("Closing connection due to timeout\n");
             closeConn(i, compressArr, fds, currentClients);
