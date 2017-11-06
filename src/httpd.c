@@ -143,7 +143,7 @@ void destroyReq(Request *req) {
 //**  Logs the information in to file.log  **//
 void logFile(int i, Request *req) {
 
-    char clientPort = ntohs(cc[i].clientSockaddr.sin_port);
+    int clientPort = ntohs(cc[i].clientSockaddr.sin_port);
     char *clientIP = inet_ntoa(cc[i].clientSockaddr.sin_addr);
 
     time_t currenttime = time(NULL);
@@ -152,12 +152,12 @@ void logFile(int i, Request *req) {
     strftime(form, sizeof form, "%F : %T", timeinfo);
 
     GString *log = g_string_new(form);
-    g_string_append_printf(log, " : %s:%c %u %s : ", clientIP, clientPort, req->method, req->host->str);
+    g_string_append_printf(log, " : %s:%d %u ", clientIP, clientPort, req->method);
 
     if(req->method == UNKN)
-        g_string_append(log, "501\n");
+        g_string_append(log, "Unsupported method : 501\n");
     else
-        g_string_append(log, "200\n");
+        g_string_append_printf(log, "%s : 200\n", req->host->str);
 
     FILE *f;
     //**  Opens the file or creates it if it does not exist already  **//
