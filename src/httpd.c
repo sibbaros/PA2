@@ -219,12 +219,14 @@ void closeConnections(struct pollfd *fds, int *numFds, int *compressArr) {
 }
 
 void closeConn(int i, int *compressArr, struct pollfd *fds, int currentClients) {
-    g_timer_destroy(cc[i].conn_timer);
+    if(cc[i].conn_timer != NULL)
+        g_timer_destroy(cc[i].conn_timer);
     shutdown(cc[i].conn_fd , SHUT_RDWR);
     close(cc[i].conn_fd);
     cc[i].conn_fd = -1;
     *compressArr = 1;
 
+    shutdown(fds[i].fd , SHUT_RDWR);
     close(fds[i].fd);
     fds[i].revents = 0;
     fds[i].fd = -1;
@@ -357,7 +359,9 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
 
 void checkTimer(int *compressArr, int i, struct pollfd *fds, int currentClients) {
     //**  30 second timeout window  **//
-    const int TIMEOUT = 5;
+    const int TIMEOUT = 30;
+    if(cc[i].conn_timer == NULL)
+        return;
     gdouble elapSec = g_timer_elapsed(cc[i].conn_timer, NULL);
     if(g_timer_elapsed(cc[i].conn_timer, NULL)){
         printf("elapSec:%f\n", elapSec);
