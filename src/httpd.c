@@ -152,10 +152,10 @@ void logFile(int i, Request *req) {
     strftime(form, sizeof form, "%F : %T", timeinfo);
 
     GString *log = g_string_new(form);
-    g_string_append_printf(log, " : %s:%d %u ", clientIP, clientPort, req->method);
+    g_string_append_printf(log, " : %s:%d %s ", clientIP, clientPort, https[req->method]);
 
     if(req->method == UNKN)
-        g_string_append(log, "Unsupported method : 501\n");
+        g_string_append(log, " : 501\n");
     else
         g_string_append_printf(log, "%s : 200\n", req->host->str);
 
