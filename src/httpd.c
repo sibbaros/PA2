@@ -297,6 +297,7 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
         req.closeCon = TRUE;
         g_string_free(recvdMsg, TRUE);
         g_string_free(response, TRUE);
+        destroyReq(&req);
         closeConn(i, compressArr, fds, currentClients);
     }
 
