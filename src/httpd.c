@@ -52,15 +52,13 @@ void reqInit(Request *r);
 void ifHead(char *html);
 void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL);
 void ifPost(char *message, char *html, char *clientPort, char *clientIP);
-void ifError(char *html);
 void logFile(char *clientPort, char *clientIP, char *request, 
              char *requestURL, char *rCode);
 int compress(int *compressArr, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int *numFds, int *compressArr);
 int addConn(int connFd, struct pollfd *fds, int numFds);
 void closeConn(int i, int *compressArr, struct pollfd *fds, int currentClients);
-void parse_request(GString *rec, Request *req, int i, struct pollfd *fds, 
-                   int *compressArr, int currentClients);
+void parse(GString *rec, Request *req);
 GString *createHtml(Request *req, ClientCon con);
 void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients);
 void checkTimer(int *compressArr, int i, struct pollfd *fds, int currentClients);
@@ -139,56 +137,6 @@ void reqInit(Request *r) {
     r->mBody = g_string_new(NULL);
     r->closeCon = false;
     r->method = UNKN;
-}
-
-//**  Called if a Get request is called  **//
-void ifGet(char *html, char *clientPort, char *clientIP, char *requestURL) { 
-
-    fflush(stdout);
-    html[0] = '\0';
-    strcat(html, "\nHTTP/1.1 200, OK\r\nContent-type: text/html\r\n\r\n"
-    "\n<!DOCTYPE>\n<html>\r\n    <head>\n        <meta charset=\"utf-8\">\r\n"
-    "    </head>\n    <body>\n        <h2>\n");
-    strcat(html, "            http://");
-    strcat(html, clientIP);
-    strcat(html, ":");
-    strcat(html, clientPort);
-    strcat(html, requestURL);
-    strcat(html, "\n        </h2>\n    </body>\n</html>\r\n");
-
-}
-
-//**  Called if a Post request is sent  **//
-void ifPost(char *message, char *html, char *clientPort, char *clientIP) {
-    fflush(stdout);
-   // same as get request plus the data in the body of the post request
-    char data[512];
-    strncpy(data, message, sizeof(data)-1);
-    char *dataInfo;
-    dataInfo = strstr(data, "\r\n\r\n");
-    printf("%s\n", dataInfo);
-
-    html[0] = '\0';
-    strcat(html, "\nHTTP/1.1 200, OK\nContent-type: text/html\n"
-    "\n<!DOCTYPE>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
-    "    </head>\n    <body>\n        <h2>\n");
-    strcat(html, "            http://");
-    strcat(html, clientIP);
-    strcat(html, ":");
-    strcat(html, clientPort);
-    strcat(html, "\n        </h2>\n        <p>");
-    strcat(html, dataInfo);
-    strcat(html, "\n        </p>\n    </body>\n</html>\n"); 
-}
-
-//**  Called if an unknown request is called  **//
-void ifError(char *html) {
-    fflush(stdout);
-    html[0] = '\0';
-    strcat(html, "\nHTTP/1.1 501, NOTOK\n"
-    "<!DOCTYPE html>\n<html>\n    <head>\n        <meta charset=\"utf-8\">\n"
-    "    </head>\n    <body>\n        <h2>\n            Error: Not Implemented"
-    "\n        </h2>\n    </body>\n</html>");
 }
 
 //**  Logs the information in to file.log  **//
@@ -276,8 +224,8 @@ int addConn(int connFd, struct pollfd *fds, int numFds) {
     return numFds;
 }
 
-void parse_request(GString *rec, Request *req, int i, struct pollfd *fds, 
-                   int *compressArr, int currentClients) {
+void parse(GString *rec, Request *req/*, int i, struct pollfd *fds, 
+                   int *compressArr, int currentClients*/) {
     if (g_str_has_prefix(rec->str, "HEAD")) {
         req->method = HEAD;
     }
@@ -289,8 +237,6 @@ void parse_request(GString *rec, Request *req, int i, struct pollfd *fds,
     }
     else {
         req->method = UNKN;
-        printf("Closing connection because of an unknown method.\n");
-        closeConn(i, compressArr, fds, currentClients);
     }
 }
 
@@ -299,15 +245,13 @@ GString *createHtml(Request *req, ClientCon con) {
     "<meta charset=\"utf-8\">\r\n        <title>\n            "
     "T-409-TSAM-2017: Programming Assignment\n        </title>\n    "
     "</head>\n    <body>\n        <h2>\n");
-    g_string_append_printf(html, "            <p>http://%s %s:%d</p>", req->host->str,
+    g_string_append_printf(html, "            http://%s %s:%d", req->host->str,
                 inet_ntoa(con.clientSockaddr.sin_addr), ntohs(con.clientSockaddr.sin_port));
     g_string_append(html,"\n        </h2>\n    </body>\n</html>\r\n");
     return html;
 }
 
 void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients) {
-    /*char request[512], mType[5], rCode[8], *requestURL, clientIP[500], 
-         clientPort[32], html[500], message[512];*/
     Request req;
     reqInit(&req);
     GString *response = g_string_sized_new(1024);
@@ -320,13 +264,15 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
         closeConn(i, compressArr, fds, currentClients);
     }
 
-    parse_request(recvdMsg, &req, i, fds, compressArr, currentClients);
+    parse(recvdMsg, &req);
 
     char dateAndTime[512];
     getDateAndTime(dateAndTime);
     g_string_append(response, "HTTP/1.1 ");
-    if(req.method == UNKN)
+    if(req.method == UNKN){
         g_string_append(response, "501 NOTOK");
+        req.closeCon = TRUE;
+    }
     else
         g_string_append(response, "200 OK");
     g_string_append(response, "\r\nContent-Type: text/html; charset=utf-8\r\n");
@@ -345,34 +291,17 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
     GString *msg = createHtml(&req, cc[i]);
     g_string_append_printf(response, "Content-Length: %lu\r\n", msg->len);
     g_string_append(response, "\r\n");
-    if(!(req.method == HEAD))
+    if(!(req.method == HEAD || req.method == UNKN))
         g_string_append(response, msg->str);
     g_string_free(msg, TRUE);
 
-    //**  This is if data is recieved  **//
-    /*strncpy(request, message, sizeof(request)-1);
-    requestURL = strchr(request, '/');
-    requestURL = strtok(requestURL, " ");
-    memcpy(mType, &message[0], 4);
-    mType[4] = '\0';
-    strcpy(rCode, "200, OK");
-
-    if(!(strcmp(mType, "GET "))) {
-        printf("Get request\n");
-        ifGet(html, clientPort, clientIP, requestURL);
-    }
-    else if(!(strcmp(mType, "POST"))) {
-        printf("Post request\n");
-        ifPost(message, html, clientPort, clientIP);
-    }
-    else {
-        printf("%s requests are unsupported by the server.\n", mType);
-        ifError(html);
-        strncpy(rCode, "Unsupported Request", sizeof(rCode)-1);
-    }
-
-    logFile(clientIP, clientPort, mType, requestURL, rCode);*/
+    //logFile(clientIP, clientPort, mType, requestURL, rCode);
     int rc = send(fds[i].fd, response->str, response->len, 0);
+
+    if(req.method == UNKN){
+        printf("Closing connection because of an unknown method.\n");
+        closeConn(i, compressArr, fds, currentClients);
+    }
 
     if(rc < 0) {
         perror("send() failed");
