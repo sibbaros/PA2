@@ -252,10 +252,10 @@ GString *createHtml(Request *req, ClientCon con) {
     "</head>\n    <body>\n        <h2>\n");
     g_string_append_printf(html, "            http://%s %s:%d", req->host->str,
                 inet_ntoa(con.clientSockaddr.sin_addr), ntohs(con.clientSockaddr.sin_port));
-    g_string_append(html,"\n        </h2>\n    </body>\n</html>\r\n");
-
+    g_string_append(html, "\n        </h2>\n");
     if(req->method == POST)
-        g_string_append(html, req->mBody->str);
+        g_string_append_printf(html, "            <p>%s\n            </p>", req->mBody->str);
+    g_string_append(html, "\n    </body>\n</html>\r\n");
     return html;
 }
 
@@ -317,7 +317,7 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
 
     if(!req.closeCon) {
         g_timer_start(cc[i].conn_timer);
-        //**  Persistent unless declared otherwise  **//
+        //**  Persistent unless otherwise declared  **//
         g_string_append(response, "Connection: keep-alive\r\n");
         g_string_append(response, "Keep-Alive: timeout=30s\r\n");
     }
