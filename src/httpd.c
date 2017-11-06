@@ -145,17 +145,19 @@ void logFile(int i, Request *req) {
 
     char clientPort = ntohs(cc[i].clientSockaddr.sin_port);
     char *clientIP = inet_ntoa(cc[i].clientSockaddr.sin_addr);
-    char rCode[5];
-    if(req->method == UNKN)
-        strncpy(rCode, "501", sizeof(rCode)-1);
-    else
-        strncpy(rCode, "200", sizeof(rCode)-1);
 
-    fflush(stdout);
-    time_t currenttime;
-    struct tm *timeinfo;
-    time (&currenttime);
-    timeinfo = localtime (&currenttime);
+    time_t currenttime = time(NULL);
+    struct tm *timeinfo = gmtime(&currenttime);
+    char form[] = "YYYY-MM-DD : hh:mm:ss";
+    strftime(form, sizeof form, "%F : %T", timeinfo);
+
+    GString *log = g_string_new(form);
+    g_string_append_printf(log, " : %s:%c %u %s : ", clientIP, clientPort, req->method, req->host->str);
+
+    if(req->method == UNKN)
+        g_string_append(log, "501\n");
+    else
+        g_string_append(log, "200\n");
 
     FILE *f;
     //**  Opens the file or creates it if it does not exist already  **//
@@ -167,11 +169,11 @@ void logFile(int i, Request *req) {
     }
 
     //**  Prints the information into file.log  **//
-    char time[25];
-    strncpy(time, asctime (timeinfo), sizeof(time) - 1);
-    fprintf(f, "%s : %s:%c %c %s : %c\n", time, clientIP, 
-            clientPort, req->method, req->host->str, *rCode);
+    fprintf(f, "%s", log->str);
+
     fclose(f);
+    fflush(f);
+    g_string_free(log, TRUE);
 }
 
 int compress(int *compressArr, struct pollfd *fds, int numFds) {
