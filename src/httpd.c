@@ -49,8 +49,8 @@ void checkBind(int sockfd, struct sockaddr_in server);
 void checkListen(int sockfd);
 void reqInit(Request *r);
 void destroyReq(Request *req);
-void logFile(char *clientPort, char *clientIP, char *request, 
-             char *requestURL, char *rCode);
+void logFile(int i, char request, 
+             char requestURL, char *rCode);
 int compress(int *compressArr, struct pollfd *fds, int numFds);
 int addConn(int connFd, struct pollfd *fds, int numFds);
 void closeConnections(struct pollfd *fds, int *numFds, int *compressArr);
@@ -142,13 +142,17 @@ void destroyReq(Request *req) {
 }
 
 //**  Logs the information in to file.log  **//
-void logFile(char *clientPort, char *clientIP, char *request, 
-             char *requestURL, char *rCode) {
+void logFile(int i, char request, char requestURL, char *rCode) {
+
+    char *clientPort = ntohs(cc[i].clientSockaddr.sin_port);
+    char *clientIP = inet_ntoa(cc[i].clientSockaddr.sin_addr);
+
     fflush(stdout);
     time_t currenttime;
     struct tm *timeinfo;
     time (&currenttime);
     timeinfo = localtime (&currenttime);
+
     FILE *f;
     //**  Opens the file or creates it if it does not exist already  **//
     f = fopen("./src/file.log", "a" );
@@ -161,7 +165,7 @@ void logFile(char *clientPort, char *clientIP, char *request,
     //**  Prints the information into file.log  **//
     char time[25];
     strncpy(time, asctime (timeinfo), 23);
-    fprintf(f, "%s : %s:%s %s %s : %s\n", time, clientIP, 
+    fprintf(f, "%s : %s:%s %c %c : %c\n", time, clientIP, 
             clientPort, request, requestURL, rCode);
     fclose(f);
 }
@@ -331,7 +335,7 @@ void handleConn(int i, struct pollfd *fds, int *compressArr, int currentClients)
         g_string_append(response, msg->str);
     g_string_free(msg, TRUE);
 
-    //logFile(clientIP, clientPort, mType, requestURL, rCode);
+    logFile(i, req.method, req.host->str, &response);
     int rc = send(fds[i].fd, response->str, response->len, 0);
 
     if(req.method == UNKN){
